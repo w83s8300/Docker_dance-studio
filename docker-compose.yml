@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./backend:/app
+    working_dir: /app
+    command: ["python", "app.py"]
+    depends_on:
+      - db
+    networks:
+      - app-network
+
+  # Nuxt.js (frontend)
+  frontend:
+    build:
+      context: ./web
+      dockerfile: ../.docker-env/web/Dockerfile
+    container_name: nuxt-app
+    restart: unless-stopped
+    volumes:
+      - ./web:/app
+    ports:
+      - "3000:3000"
+    command: sh -c "if [ ! -f package.json ]; then npx nuxi init .; fi && npm install && npm run dev"
+    depends_on:
+      - backend
+    networks:
+      - app-network
+  dance-studio-website:
+    build:
+      context: ./dance-studio-website
+    container_name: dance-studio-website
+    restart: unless-stopped
+    ports:
+      - "3001:80"
+    networks:
+      - app-network
+  # MySQL (Database)
+  db:
+    image: mysql:8.0
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: testdb
+      MYSQL_USER: user
+      MYSQL_PASSWORD: userpass
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - app-network
+  # Nginx for serving Laravel and Nuxt
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./.docker-env/nginx/api.conf:/etc/nginx/conf.d/api.conf
+      - ./.docker-env/nginx/web.conf:/etc/nginx/conf.d/web.conf
+      - ./.docker-env/nginx/dance-studio.conf:/etc/nginx/conf.d/dance-studio.conf
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - app-network
+      
+networks:
+  app-network:
+    driver: bridge

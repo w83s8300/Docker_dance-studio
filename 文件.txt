@@ -1,0 +1,67 @@
+docker
+進入容器並檢查目錄的權限，確保 Laravel 框架的 storage 和 cache 目錄有正確的權限。
+docker exec -it your-container-name bash
+cd /var/www/html/storage
+chmod -R 775 framework
+chown -R www-data:www-data framework
+清理 Laravel 的快取
+php artisan config:clear
+php artisan cache:clear
+php artisan view:clear
+php artisan optimize:clear
+重啟 Docker 容器
+docker-compose down
+docker-compose up -d
+
+啟動所有服務
+    docker-compose up -d --build
+查看容器日誌
+docker-compose logs -f [service_name]
+進入容器終端
+docker-compose exec [service_name] bash
+重新啟動服務
+docker-compose restart [service_name]
+停止並移除容器
+docker-compose down
+
+=================================================
+Git
+
+初始化 Git 儲存庫
+git init
+
+設定 .gitignore
+.gitignore
+
+首次提交
+git add .
+git commit -m "初次提交：建立專案結構與開發環境"
+
+將專案推送到 GitHub
+git remote add origin https://github.com/your-username/your-repo.git
+git branch -M main
+git push -u origin main
+
+Git 的技巧
+維持良好的提交習慣
+每當完成一個功能或修正一個 bug，記得進行提交。提交訊息要清晰明瞭，讓未來的自己一看就懂。
+git commit -m "新增財務記錄的 API 功能"
+
+使用分支管理開發
+分支就像是多重宇宙的不同時間線，讓你可以在不影響主線的情況下進行開發。當你想嘗試新的功能或實驗時，可以建立一個新分支：
+git checkout -b feature/add-authentication
+
+開發完成並測試無誤後，再合併回主分支：
+git checkout main
+git merge feature/add-authentication
+
+定期推送到遠端儲存庫
+git push
+
+Git 進階技巧
+回到過去
+git checkout <commit-hash>
+檢視歷史紀錄
+git log
+撤銷更改
+git checkout -- <file>

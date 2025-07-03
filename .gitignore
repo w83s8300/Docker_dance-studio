@@ -1,0 +1,29 @@
+# Node modules
+web/node_modules/
+web/.nuxt/
+web/.output/
+
+# Laravel vendor
+api/vendor/
+api/storage/
+api/node_modules/
+
+# Environment files
+*.env
+.env
+
+# Composer lock
+api/composer.lock
+
+# Docker volumes
+.docker-env/.db_data/
+
+# Log files
+*.log
+
+# MacOS
+.DS_Store
+
+# IDE files
+.idea/
+.vscode/
