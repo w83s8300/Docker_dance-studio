@@ -22,7 +22,7 @@ services:
     container_name: dance-studio-website
     restart: unless-stopped
     ports:
-      - "192.168.10.10:3001:80"
+      - "3001:80"
     networks:
       - app-network
   # MySQL (Database)
