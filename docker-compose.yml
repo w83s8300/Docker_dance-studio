@@ -15,29 +15,14 @@ services:
     networks:
       - app-network
 
-  # Nuxt.js (frontend)
-  frontend:
-    build:
-      context: ./web
-      dockerfile: ../.docker-env/web/Dockerfile
-    container_name: nuxt-app
-    restart: unless-stopped
-    volumes:
-      - ./web:/app
-    ports:
-      - "3000:3000"
-    command: sh -c "if [ ! -f package.json ]; then npx nuxi init .; fi && npm install && npm run dev"
-    depends_on:
-      - backend
-    networks:
-      - app-network
+  
   dance-studio-website:
     build:
       context: ./dance-studio-website
     container_name: dance-studio-website
     restart: unless-stopped
     ports:
-      - "3001:80"
+      - "192.168.10.10:3001:80"
     networks:
       - app-network
   # MySQL (Database)
@@ -55,22 +40,7 @@ services:
       - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - app-network
-  # Nginx for serving Laravel and Nuxt
-  nginx:
-    image: nginx:alpine
-    container_name: nginx
-    restart: unless-stopped
-    ports:
-      - "80:80"
-    volumes:
-      - ./.docker-env/nginx/api.conf:/etc/nginx/conf.d/api.conf
-      - ./.docker-env/nginx/web.conf:/etc/nginx/conf.d/web.conf
-      - ./.docker-env/nginx/dance-studio.conf:/etc/nginx/conf.d/dance-studio.conf
-    depends_on:
-      - backend
-      - frontend
-    networks:
-      - app-network
+  
       
 networks:
   app-network:
