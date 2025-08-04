@@ -77,19 +77,38 @@ def init_database_tables():
             )
             """
             
-            # 老師表格
+            # 老師表格（移除 specialties 欄位）
             teachers_table = """
             CREATE TABLE IF NOT EXISTS teachers (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 name VARCHAR(100) NOT NULL,
                 email VARCHAR(100) UNIQUE,
                 phone VARCHAR(20),
-                specialties TEXT,
                 experience_years INT,
                 bio TEXT,
                 hourly_rate DECIMAL(10,2),
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )
+            """
+
+            # 風格表格
+            styles_table = """
+            CREATE TABLE IF NOT EXISTS styles (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(50) NOT NULL UNIQUE,
+                description TEXT
+            )
+            """
+
+            # 老師-風格關聯表
+            teacher_styles_table = """
+            CREATE TABLE IF NOT EXISTS teacher_styles (
+                teacher_id INT NOT NULL,
+                style_id INT NOT NULL,
+                PRIMARY KEY (teacher_id, style_id),
+                FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE CASCADE,
+                FOREIGN KEY (style_id) REFERENCES styles(id) ON DELETE CASCADE
             )
             """
             
@@ -154,6 +173,8 @@ def init_database_tables():
             cursor.execute(students_table)
             cursor.execute(rooms_table)
             cursor.execute(teachers_table)
+            cursor.execute(styles_table)
+            cursor.execute(teacher_styles_table)
             cursor.execute(courses_table)
             cursor.execute(schedules_table)
             cursor.execute(enrollments_table)

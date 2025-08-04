@@ -11,40 +11,57 @@ import json
 # API 基礎 URL
 BASE_URL = "http://localhost:8001/api"
 
+def test_styles():
+    """測試新增風格"""
+    print("=== 測試新增風格 ===")
+    styles_data = [
+        {"name": "Ballet", "description": "芭蕾舞"},
+        {"name": "Contemporary", "description": "現代舞"},
+        {"name": "Hip-Hop", "description": "街舞"},
+        {"name": "Jazz", "description": "爵士舞"}
+    ]
+    for style in styles_data:
+        try:
+            response = requests.post(f"{BASE_URL}/styles", json=style)
+            if response.status_code == 201:
+                print(f"✓ 成功新增風格: {style['name']}")
+            else:
+                print(f"✗ 新增風格失敗: {style['name']} - {response.text}")
+        except Exception as e:
+            print(f"✗ 請求錯誤: {str(e)}")
+
 def test_teachers():
-    """測試新增老師"""
+    """測試新增老師（含風格）"""
     print("=== 測試新增老師 ===")
-    
     teachers_data = [
         {
             "name": "張美麗",
             "email": "zhang@dancestudio.com",
             "phone": "0912-345-678",
-            "specialties": "Ballet, Contemporary",
             "experience_years": 8,
             "bio": "專業芭蕾舞老師，畢業於國立台北藝術大學",
-            "hourly_rate": 1200.00
+            "hourly_rate": 1200.00,
+            "style_ids": [1, 2]  # 芭蕾、現代舞
         },
         {
             "name": "李強",
-            "email": "li@dancestudio.com", 
+            "email": "li@dancestudio.com",
             "phone": "0923-456-789",
-            "specialties": "Hip-Hop, Street Dance",
             "experience_years": 5,
             "bio": "街舞冠軍，擅長各種流行舞蹈",
-            "hourly_rate": 1000.00
+            "hourly_rate": 1000.00,
+            "style_ids": [3]  # 街舞
         },
         {
             "name": "王雅文",
             "email": "wang@dancestudio.com",
-            "phone": "0934-567-890", 
-            "specialties": "Jazz, Modern",
+            "phone": "0934-567-890",
             "experience_years": 10,
             "bio": "爵士舞專家，具有豐富的表演經驗",
-            "hourly_rate": 1300.00
+            "hourly_rate": 1300.00,
+            "style_ids": [4]  # 爵士舞
         }
     ]
-    
     for teacher in teachers_data:
         try:
             response = requests.post(f"{BASE_URL}/teachers", json=teacher)
@@ -265,7 +282,8 @@ if __name__ == "__main__":
     print("開始測試舞蹈教室 API...")
     print("請確保後端服務已啟動在 http://localhost:8001")
     print()
-    
+    test_styles()
+    print()
     test_rooms()
     print()
     test_teachers()

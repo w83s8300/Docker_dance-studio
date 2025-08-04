@@ -56,11 +56,35 @@ http://localhost:8001/api
 ### 2. 老師管理 (`/api/teachers`)
 
 #### GET /api/teachers
-取得所有老師資料
+取得所有老師資料，包含風格資訊
 - **方法**: GET
+- **回應格式**:
+```json
+{
+  "success": true,
+  "teachers": [
+    {
+      "id": 1,
+      "name": "張美麗",
+      "email": "zhang@dancestudio.com",
+      "phone": "0912-345-678",
+      "experience_years": 8,
+      "bio": "專業芭蕾舞老師，畢業於國立台北藝術大學",
+      "hourly_rate": 1200.00,
+      "styles": [
+        { "id": 1, "name": "Ballet" },
+        { "id": 2, "name": "Contemporary" }
+      ],
+      "created_at": "2025-01-01T12:00:00",
+      "updated_at": "2025-01-01T12:00:00"
+    }
+  ],
+  "total": 1
+}
+```
 
 #### POST /api/teachers
-新增老師
+新增老師（可指定風格 ID 陣列）
 - **方法**: POST
 - **請求格式**:
 ```json
@@ -68,10 +92,38 @@ http://localhost:8001/api
   "name": "張美麗",
   "email": "zhang@dancestudio.com",
   "phone": "0912-345-678",
-  "specialties": "Ballet, Contemporary",
   "experience_years": 8,
   "bio": "專業芭蕾舞老師，畢業於國立台北藝術大學",
-  "hourly_rate": 1200.00
+  "hourly_rate": 1200.00,
+  "style_ids": [1, 2]
+}
+```
+
+### 2.1 風格管理 (`/api/styles`)
+
+#### GET /api/styles
+取得所有風格資料
+- **方法**: GET
+- **回應格式**:
+```json
+{
+  "success": true,
+  "styles": [
+    { "id": 1, "name": "Ballet", "description": "芭蕾舞" },
+    { "id": 2, "name": "Contemporary", "description": "現代舞" }
+  ],
+  "total": 2
+}
+```
+
+#### POST /api/styles
+新增風格
+- **方法**: POST
+- **請求格式**:
+```json
+{
+  "name": "Jazz",
+  "description": "爵士舞"
 }
 ```
 
@@ -245,12 +297,20 @@ http://localhost:8001/api
 - `name`: 姓名 (必填)
 - `email`: 電子郵件 (唯一)
 - `phone`: 電話
-- `specialties`: 專長
 - `experience_years`: 經驗年數
 - `bio`: 個人簡介
 - `hourly_rate`: 時薪
 - `created_at`: 建立時間
 - `updated_at`: 更新時間
+
+### styles (風格表)
+- `id`: 主鍵
+- `name`: 風格名稱 (必填，唯一)
+- `description`: 風格描述
+
+### teacher_styles (老師-風格關聯表)
+- `teacher_id`: 老師ID (外鍵)
+- `style_id`: 風格ID (外鍵)
 
 ### courses (課程表)
 - `id`: 主鍵

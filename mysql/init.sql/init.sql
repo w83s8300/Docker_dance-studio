@@ -18,7 +18,22 @@ CREATE TABLE IF NOT EXISTS teachers (
     name VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE,
     phone VARCHAR(20),
-    specialties TEXT,
+    -- specialties 欄位移除，改用 styles 關聯
+-- 建立風格表格
+CREATE TABLE IF NOT EXISTS styles (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE,
+    description TEXT
+);
+
+-- 建立老師-風格關聯表
+CREATE TABLE IF NOT EXISTS teacher_styles (
+    teacher_id INT NOT NULL,
+    style_id INT NOT NULL,
+    PRIMARY KEY (teacher_id, style_id),
+    FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE CASCADE,
+    FOREIGN KEY (style_id) REFERENCES styles(id) ON DELETE CASCADE
+);
     experience_years INT,
     bio TEXT,
     hourly_rate DECIMAL(10,2),
