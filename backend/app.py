@@ -119,14 +119,15 @@ def init_database_tables():
                 name VARCHAR(100) NOT NULL,
                 description TEXT,
                 level VARCHAR(20) NOT NULL,
-                type VARCHAR(50) NOT NULL,
+                style_id INT,
                 duration_minutes INT DEFAULT 60,
                 max_students INT DEFAULT 15,
                 price DECIMAL(10,2),
                 teacher_id INT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE SET NULL
+                FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE SET NULL,
+                FOREIGN KEY (style_id) REFERENCES styles(id) ON DELETE SET NULL
             )
             """
             
@@ -394,7 +395,7 @@ class Students(Resource):
 
 class Teachers(Resource):
     def get(self):
-        """取得所有老師"""
+        """取得所有老師及其風格"""
         try:
             connection = get_db_connection()
             if not connection:
@@ -402,9 +403,36 @@ class Teachers(Resource):
             
             try:
                 cursor = connection.cursor(dictionary=True)
+                
+                # 查詢所有老師
                 cursor.execute("SELECT * FROM teachers ORDER BY created_at DESC")
                 teachers = cursor.fetchall()
                 
+                # 查詢所有老師的風格
+                teacher_ids = [teacher['id'] for teacher in teachers]
+                if teacher_ids:
+                    style_query = """
+                    SELECT ts.teacher_id, s.id as style_id, s.name as style_name
+                    FROM teacher_styles ts
+                    JOIN styles s ON ts.style_id = s.id
+                    WHERE ts.teacher_id IN (%s)
+                    """ % ', '.join(['%s'] * len(teacher_ids))
+                    
+                    cursor.execute(style_query, teacher_ids)
+                    styles = cursor.fetchall()
+                    
+                    # 將風格整理到對應的老師物件中
+                    teacher_styles = {teacher_id: [] for teacher_id in teacher_ids}
+                    for style in styles:
+                        teacher_styles[style['teacher_id']].append({
+                            'id': style['style_id'],
+                            'name': style['style_name']
+                        })
+                    
+                    # 將風格加入老師物件
+                    for teacher in teachers:
+                        teacher['styles'] = teacher_styles.get(teacher['id'], [])
+
                 # 轉換 datetime 物件為 ISO 格式字串
                 for teacher in teachers:
                     for field in ['created_at', 'updated_at']:
@@ -443,26 +471,36 @@ class Teachers(Resource):
             try:
                 cursor = connection.cursor()
                 
-                insert_query = """
+                # 插入老師基本資料
+                insert_teacher_query = """
                 INSERT INTO teachers 
-                (name, email, phone, specialties, experience_years, bio, hourly_rate)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                (name, email, phone, experience_years, bio, hourly_rate)
+                VALUES (%s, %s, %s, %s, %s, %s)
                 """
                 
-                values = (
+                teacher_values = (
                     data.get('name'),
                     data.get('email'),
                     data.get('phone'),
-                    data.get('specialties'),
                     data.get('experience_years'),
                     data.get('bio'),
                     data.get('hourly_rate')
                 )
                 
-                cursor.execute(insert_query, values)
-                connection.commit()
-                
+                cursor.execute(insert_teacher_query, teacher_values)
                 teacher_id = cursor.lastrowid
+                
+                # 處理老師與風格的關聯
+                style_ids = data.get('style_ids', [])
+                if style_ids:
+                    insert_style_query = """
+                    INSERT INTO teacher_styles (teacher_id, style_id)
+                    VALUES (%s, %s)
+                    """
+                    style_values = [(teacher_id, style_id) for style_id in style_ids]
+                    cursor.executemany(insert_style_query, style_values)
+
+                connection.commit()
                 
                 return {
                     'success': True,
@@ -492,9 +530,10 @@ class Courses(Resource):
             try:
                 cursor = connection.cursor(dictionary=True)
                 query = """
-                SELECT c.*, t.name as teacher_name, t.email as teacher_email
+                SELECT c.*, t.name as teacher_name, t.email as teacher_email, s.name as style_name
                 FROM courses c
                 LEFT JOIN teachers t ON c.teacher_id = t.id
+                LEFT JOIN styles s ON c.style_id = s.id
                 ORDER BY c.created_at DESC
                 """
                 cursor.execute(query)
@@ -528,8 +567,8 @@ class Courses(Resource):
         try:
             data = request.get_json()
             
-            if not data or 'name' not in data or 'level' not in data or 'type' not in data:
-                return {'error': '缺少必要欄位：課程名稱、難度級別、課程類型'}, 400
+            if not data or 'name' not in data or 'level' not in data:
+                return {'error': '缺少必要欄位：課程名稱、難度級別'}, 400
             
             connection = get_db_connection()
             if not connection:
@@ -540,7 +579,7 @@ class Courses(Resource):
                 
                 insert_query = """
                 INSERT INTO courses 
-                (name, description, level, type, duration_minutes, max_students, price, teacher_id)
+                (name, description, level, style_id, duration_minutes, max_students, price, teacher_id)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 """
                 
@@ -548,7 +587,7 @@ class Courses(Resource):
                     data.get('name'),
                     data.get('description'),
                     data.get('level'),
-                    data.get('type'),
+                    data.get('style_id'),
                     data.get('duration_minutes', 60),
                     data.get('max_students', 15),
                     data.get('price'),
@@ -715,6 +754,170 @@ api.add_resource(Students, '/api/students')
 api.add_resource(Teachers, '/api/teachers')
 api.add_resource(Courses, '/api/courses')
 api.add_resource(CourseSchedules, '/api/schedules')
+
+class Styles(Resource):
+    def get(self):
+        """取得所有風格"""
+        try:
+            connection = get_db_connection()
+            if not connection:
+                return {'error': '資料庫連接失敗'}, 500
+            
+            try:
+                cursor = connection.cursor(dictionary=True)
+                cursor.execute("SELECT * FROM styles ORDER BY id DESC")
+                styles = cursor.fetchall()
+                
+                return {
+                    'success': True,
+                    'styles': styles,
+                    'total': len(styles)
+                }, 200
+                
+            except mysql.connector.Error as err:
+                print(f"查詢風格錯誤: {err}")
+                return {'error': '查詢風格失敗'}, 500
+            finally:
+                cursor.close()
+                connection.close()
+                
+        except Exception as e:
+            print(f"查詢風格錯誤: {str(e)}")
+            return {'error': '查詢風格失敗'}, 500
+    
+    def post(self):
+        """新增風格"""
+        try:
+            data = request.get_json()
+            
+            if not data or 'name' not in data:
+                return {'error': '缺少必要欄位：風格名稱'}, 400
+            
+            connection = get_db_connection()
+            if not connection:
+                return {'error': '資料庫連接失敗'}, 500
+            
+            try:
+                cursor = connection.cursor()
+                
+                insert_query = """
+                INSERT INTO styles (name, description)
+                VALUES (%s, %s)
+                """
+                
+                values = (
+                    data.get('name'),
+                    data.get('description')
+                )
+                
+                cursor.execute(insert_query, values)
+                connection.commit()
+                
+                style_id = cursor.lastrowid
+                
+                return {
+                    'success': True,
+                    'message': '風格新增成功！',
+                    'style_id': style_id
+                }, 201
+                
+            except mysql.connector.Error as err:
+                print(f"新增風格錯誤: {err}")
+                return {'error': '新增風格失敗'}, 500
+            finally:
+                cursor.close()
+                connection.close()
+                
+        except Exception as e:
+            print(f"新增風格錯誤: {str(e)}")
+            return {'error': '新增風格失敗'}, 500
+
+api.add_resource(Styles, '/api/styles')
+
+class Rooms(Resource):
+    def get(self):
+        """取得所有教室"""
+        try:
+            connection = get_db_connection()
+            if not connection:
+                return {'error': '資料庫連接失敗'}, 500
+            
+            try:
+                cursor = connection.cursor(dictionary=True)
+                cursor.execute("SELECT * FROM rooms ORDER BY id DESC")
+                rooms = cursor.fetchall()
+                
+                return {
+                    'success': True,
+                    'rooms': rooms,
+                    'total': len(rooms)
+                }, 200
+                
+            except mysql.connector.Error as err:
+                print(f"查詢教室錯誤: {err}")
+                return {'error': '查詢教室失敗'}, 500
+            finally:
+                cursor.close()
+                connection.close()
+                
+        except Exception as e:
+            print(f"查詢教室錯誤: {str(e)}")
+            return {'error': '查詢教室失敗'}, 500
+
+    def post(self):
+        """新增教室"""
+        try:
+            data = request.get_json()
+            
+            if not data or 'name' not in data:
+                return {'error': '缺少必要欄位：教室名稱'}, 400
+            
+            connection = get_db_connection()
+            if not connection:
+                return {'error': '資料庫連接失敗'}, 500
+            
+            try:
+                cursor = connection.cursor()
+                
+                insert_query = """
+                INSERT INTO rooms (name, capacity, equipment, description, hourly_rate, is_available)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                """
+                
+                values = (
+                    data.get('name'),
+                    data.get('capacity'),
+                    data.get('equipment'),
+                    data.get('description'),
+                    data.get('hourly_rate'),
+                    data.get('is_available', True)
+                )
+                
+                cursor.execute(insert_query, values)
+                connection.commit()
+                
+                room_id = cursor.lastrowid
+                
+                return {
+                    'success': True,
+                    'message': '教室新增成功！',
+                    'room_id': room_id
+                }, 201
+                
+            except mysql.connector.Error as err:
+                print(f"新增教室錯誤: {err}")
+                return {'error': '新增教室失敗'}, 500
+            finally:
+                cursor.close()
+                connection.close()
+                
+        except Exception as e:
+            print(f"新增教室錯誤: {str(e)}")
+            return {'error': '新增教室失敗'}, 500
+
+api.add_resource(Rooms, '/api/rooms')
+
+
 
 if __name__ == '__main__':
     # 初始化資料庫表格
