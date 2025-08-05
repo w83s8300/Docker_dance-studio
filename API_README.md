@@ -29,6 +29,8 @@ http://localhost:8001/api
       "emergency_contact": "陳媽媽",
       "emergency_phone": "0912-123-456",
       "medical_notes": "無特殊疾病",
+      "remaining_classes": 10,
+      "membership_expiry": "2025-12-31",
       "created_at": "2025-01-01T12:00:00",
       "updated_at": "2025-01-01T12:00:00"
     }
@@ -49,7 +51,9 @@ http://localhost:8001/api
   "age": 25,
   "emergency_contact": "陳媽媽",
   "emergency_phone": "0912-123-456",
-  "medical_notes": "無特殊疾病"
+  "medical_notes": "無特殊疾病",
+  "remaining_classes": 10,
+  "membership_expiry": "2025-12-31"
 }
 ```
 
@@ -278,6 +282,8 @@ http://localhost:8001/api
 - `emergency_contact`: 緊急聯絡人
 - `emergency_phone`: 緊急聯絡電話
 - `medical_notes`: 醫療註記
+- `remaining_classes`: 剩餘堂數 (預設: 0)
+- `membership_expiry`: 會員到期日
 - `created_at`: 建立時間
 - `updated_at`: 更新時間
 

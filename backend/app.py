@@ -57,6 +57,8 @@ def init_database_tables():
                 emergency_contact VARCHAR(100),
                 emergency_phone VARCHAR(20),
                 medical_notes TEXT,
+                remaining_classes INT DEFAULT 0 COMMENT '剩餘堂數',
+                membership_expiry DATE COMMENT '會員到期日',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             )
