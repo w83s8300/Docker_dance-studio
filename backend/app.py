@@ -886,11 +886,153 @@ class Student(Resource):
             print(f"刪除學生錯誤: {str(e)}")
             return {'error': '刪除學生失敗'}, 500
 
+class Teacher(Resource):
+    def get(self, teacher_id):
+        """取得單一老師"""
+        try:
+            connection = get_db_connection()
+            if not connection:
+                return {'error': '資料庫連接失敗'}, 500
+            
+            try:
+                cursor = connection.cursor(dictionary=True)
+                cursor.execute("SELECT * FROM teachers WHERE id = %s", (teacher_id,))
+                teacher = cursor.fetchone()
+                
+                if not teacher:
+                    return {'error': '老師未找到'}, 404
+                
+                # 查詢老師的風格
+                style_query = """
+                SELECT s.id, s.name
+                FROM teacher_styles ts
+                JOIN styles s ON ts.style_id = s.id
+                WHERE ts.teacher_id = %s
+                """
+                cursor.execute(style_query, (teacher_id,))
+                styles = cursor.fetchall()
+                teacher['styles'] = styles
+                
+                # 轉換 datetime 和 Decimal 物件為字串
+                if teacher.get('hourly_rate'):
+                    teacher['hourly_rate'] = str(teacher['hourly_rate'])
+                for field in ['created_at', 'updated_at']:
+                    if teacher.get(field) and isinstance(teacher[field], datetime):
+                        teacher[field] = teacher[field].isoformat()
+                
+                return {
+                    'success': True,
+                    'teacher': teacher
+                }, 200
+                
+            except mysql.connector.Error as err:
+                print(f"查詢老師錯誤: {err}")
+                return {'error': '查詢老師失敗'}, 500
+            finally:
+                cursor.close()
+                connection.close()
+                
+        except Exception as e:
+            print(f"查詢老師錯誤: {str(e)}")
+            return {'error': '查詢老師失敗'}, 500
+
+    def put(self, teacher_id):
+        """更新老師資料"""
+        try:
+            data = request.get_json()
+            
+            if not data:
+                return {'error': '缺少更新資料'}, 400
+            
+            connection = get_db_connection()
+            if not connection:
+                return {'error': '資料庫連接失敗'}, 500
+            
+            try:
+                cursor = connection.cursor()
+                
+                update_fields = []
+                values = []
+                
+                for key, value in data.items():
+                    if key in ['name', 'email', 'phone', 'experience_years', 'bio', 'hourly_rate']:
+                        update_fields.append(f"{key} = %s")
+                        values.append(value)
+                
+                if update_fields:
+                    update_query = f"UPDATE teachers SET {', '.join(update_fields)} WHERE id = %s"
+                    update_values = tuple(values) + (teacher_id,)
+                    cursor.execute(update_query, update_values)
+                
+                # 更新老師與風格的關聯
+                if 'style_ids' in data:
+                    style_ids = data['style_ids']
+                    # 先刪除舊的關聯
+                    cursor.execute("DELETE FROM teacher_styles WHERE teacher_id = %s", (teacher_id,))
+                    # 新增新的關聯
+                    if style_ids:
+                        insert_style_query = """
+                        INSERT INTO teacher_styles (teacher_id, style_id)
+                        VALUES (%s, %s)
+                        """
+                        style_values = [(teacher_id, style_id) for style_id in style_ids]
+                        cursor.executemany(insert_style_query, style_values)
+
+                connection.commit()
+                
+                return {
+                    'success': True,
+                    'message': '老師資料更新成功！'
+                }, 200
+                
+            except mysql.connector.Error as err:
+                print(f"更新老師錯誤: {err}")
+                return {'error': '更新老師失敗'}, 500
+            finally:
+                cursor.close()
+                connection.close()
+                
+        except Exception as e:
+            print(f"更新老師錯誤: {str(e)}")
+            return {'error': '更新老師失敗'}, 500
+
+    def delete(self, teacher_id):
+        """刪除老師"""
+        try:
+            connection = get_db_connection()
+            if not connection:
+                return {'error': '資料庫連接失敗'}, 500
+            
+            try:
+                cursor = connection.cursor()
+                cursor.execute("DELETE FROM teachers WHERE id = %s", (teacher_id,))
+                connection.commit()
+                
+                if cursor.rowcount == 0:
+                    return {'error': '老師未找到'}, 404
+                
+                return {
+                    'success': True,
+                    'message': '老師刪除成功！'
+                }, 200
+                
+            except mysql.connector.Error as err:
+                print(f"刪除老師錯誤: {err}")
+                return {'error': '刪除老師失敗'}, 500
+            finally:
+                cursor.close()
+                connection.close()
+                
+        except Exception as e:
+            print(f"刪除老師錯誤: {str(e)}")
+            return {'error': '刪除老師失敗'}, 500
+
 api.add_resource(HelloWorld, '/')
 api.add_resource(Enrollment, '/api/enrollment')
 api.add_resource(Students, '/api/students')
 api.add_resource(Student, '/api/students/<int:student_id>') # 新增的學生單一資源
 api.add_resource(Teachers, '/api/teachers')
+api.add_resource(Teacher, '/api/teachers/<int:teacher_id>')
 api.add_resource(Courses, '/api/courses')
 api.add_resource(CourseSchedules, '/api/schedules')
 
