@@ -433,8 +433,10 @@ class Teachers(Resource):
                     for teacher in teachers:
                         teacher['styles'] = teacher_styles.get(teacher['id'], [])
 
-                # 轉換 datetime 物件為 ISO 格式字串
+                # 轉換 datetime 和 Decimal 物件為 ISO 格式字串
                 for teacher in teachers:
+                    if teacher.get('hourly_rate'):
+                        teacher['hourly_rate'] = str(teacher['hourly_rate'])
                     for field in ['created_at', 'updated_at']:
                         if teacher.get(field) and isinstance(teacher[field], datetime):
                             teacher[field] = teacher[field].isoformat()
@@ -539,8 +541,10 @@ class Courses(Resource):
                 cursor.execute(query)
                 courses = cursor.fetchall()
                 
-                # 轉換 datetime 物件為 ISO 格式字串
+                # 轉換 datetime 和 Decimal 物件為 ISO 格式字串
                 for course in courses:
+                    if course.get('price'):
+                        course['price'] = str(course['price'])
                     for field in ['created_at', 'updated_at']:
                         if course.get(field) and isinstance(course[field], datetime):
                             course[field] = course[field].isoformat()
@@ -846,6 +850,11 @@ class Rooms(Resource):
                 cursor = connection.cursor(dictionary=True)
                 cursor.execute("SELECT * FROM rooms ORDER BY id DESC")
                 rooms = cursor.fetchall()
+
+                # 轉換 Decimal 物件為字串
+                for room in rooms:
+                    if room.get('hourly_rate'):
+                        room['hourly_rate'] = str(room['hourly_rate'])
                 
                 return {
                     'success': True,
