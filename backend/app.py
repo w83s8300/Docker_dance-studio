@@ -541,10 +541,12 @@ class Courses(Resource):
                 cursor.execute(query)
                 courses = cursor.fetchall()
                 
-                # 轉換 datetime 和 Decimal 物件為 ISO 格式字串
+                # 轉換 Decimal 和 datetime 物件為可 JSON 序列化的格式
                 for course in courses:
-                    if course.get('price'):
+                    # 將 price 欄位轉為字串
+                    if 'price' in course and course['price'] is not None:
                         course['price'] = str(course['price'])
+                    # 轉換 datetime 物件為 ISO 格式字串
                     for field in ['created_at', 'updated_at']:
                         if course.get(field) and isinstance(course[field], datetime):
                             course[field] = course[field].isoformat()
@@ -557,7 +559,7 @@ class Courses(Resource):
                 
             except mysql.connector.Error as err:
                 print(f"查詢課程錯誤: {err}")
-                return {'error': '查詢課程失敗'}, 500
+                return {'error': f'查詢課程失敗: {err}'}, 500
             finally:
                 cursor.close()
                 connection.close()
@@ -637,12 +639,13 @@ class CourseSchedules(Resource):
 
                 # 基本查詢語句
                 query = """
-                SELECT cs.*, c.name as course_name, c.level, c.type, 
+                SELECT cs.*, c.name as course_name, c.level, s.name as style_name, 
                        t.name as teacher_name, r.name as room_name, 
                        r.capacity as room_capacity
                 FROM course_schedules cs
                 JOIN courses c ON cs.course_id = c.id
                 LEFT JOIN teachers t ON c.teacher_id = t.id
+                LEFT JOIN styles s ON c.style_id = s.id
                 LEFT JOIN rooms r ON cs.room_id = r.id
                 WHERE cs.is_active = TRUE
                 """
@@ -680,15 +683,15 @@ class CourseSchedules(Resource):
 
             except mysql.connector.Error as err:
                 print(f"查詢課程時間表錯誤: {err}")
-                return {'error': '查詢課程時間表失敗'}, 500
+                return {'error': f'查詢課程時間表失敗: {err}'}, 500
             finally:
                 cursor.close()
                 connection.close()
 
         except Exception as e:
             print(f"查詢課程時間表錯誤: {str(e)}")
-            return {'error': '查詢課程時間表失敗'}, 500
-    
+            return {'error': f'查詢課程時間表失敗: {str(e)}'}, 500
+
     def post(self):
         """新增課程時間表"""
         try:
@@ -712,7 +715,7 @@ class CourseSchedules(Resource):
                 
                 insert_query = """
                 INSERT INTO course_schedules 
-                (course_id, schedule_date, day_of_week, start_time, end_time, room, is_active)
+                (course_id, schedule_date, day_of_week, start_time, end_time, room_id, is_active)
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
                 """
                 
@@ -722,7 +725,7 @@ class CourseSchedules(Resource):
                     day_of_week,
                     data.get('start_time'),
                     data.get('end_time'),
-                    data.get('room', ''),
+                    data.get('room_id'),
                     data.get('is_active', True)
                 )
                 
@@ -740,7 +743,7 @@ class CourseSchedules(Resource):
                 
             except mysql.connector.Error as err:
                 print(f"新增課程時間表錯誤: {err}")
-                return {'error': '新增課程時間表失敗'}, 500
+                return {'error': f'新增課程時間表失敗: {err}'}, 500
             except ValueError as e:
                 print(f"日期格式錯誤: {e}")
                 return {'error': '日期格式錯誤，請使用 YYYY-MM-DD 格式'}, 400
@@ -844,7 +847,7 @@ class Rooms(Resource):
         try:
             connection = get_db_connection()
             if not connection:
-                return {'error': '資料庫連接失敗'}, 500
+                return {'error': '查詢教室失敗'}, 500
             
             try:
                 cursor = connection.cursor(dictionary=True)
@@ -855,6 +858,10 @@ class Rooms(Resource):
                 for room in rooms:
                     if room.get('hourly_rate'):
                         room['hourly_rate'] = str(room['hourly_rate'])
+                    # 轉換 datetime 物件為 ISO 格式字串
+                    for field in ['created_at', 'updated_at']:
+                        if room.get(field) and isinstance(room[field], datetime):
+                            room[field] = room[field].isoformat()
                 
                 return {
                     'success': True,
