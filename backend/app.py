@@ -764,9 +764,132 @@ class CourseSchedules(Resource):
             print(f"新增課程時間表錯誤: {str(e)}")
             return {'error': '新增課程時間表失敗'}, 500
 
+class Student(Resource):
+    def get(self, student_id):
+        """取得單一學生"""
+        try:
+            connection = get_db_connection()
+            if not connection:
+                return {'error': '資料庫連接失敗'}, 500
+            
+            try:
+                cursor = connection.cursor(dictionary=True)
+                cursor.execute("SELECT * FROM students WHERE id = %s", (student_id,))
+                student = cursor.fetchone()
+                
+                if not student:
+                    return {'error': '學生未找到'}, 404
+                
+                # 轉換 datetime 和 date 物件為字串
+                for field in ['created_at', 'updated_at']:
+                    if student.get(field) and isinstance(student[field], datetime):
+                        student[field] = student[field].isoformat()
+                
+                if student.get('membership_expiry') and isinstance(student['membership_expiry'], date):
+                    student['membership_expiry'] = student['membership_expiry'].isoformat()
+                
+                return {
+                    'success': True,
+                    'student': student
+                }, 200
+                
+            except mysql.connector.Error as err:
+                print(f"查詢學生錯誤: {err}")
+                return {'error': '查詢學生失敗'}, 500
+            finally:
+                cursor.close()
+                connection.close()
+                
+        except Exception as e:
+            print(f"查詢學生錯誤: {str(e)}")
+            return {'error': '查詢學生失敗'}, 500
+
+    def put(self, student_id):
+        """更新學生資料"""
+        try:
+            data = request.get_json()
+            
+            if not data:
+                return {'error': '缺少更新資料'}, 400
+            
+            connection = get_db_connection()
+            if not connection:
+                return {'error': '資料庫連接失敗'}, 500
+            
+            try:
+                cursor = connection.cursor()
+                
+                update_fields = []
+                values = []
+                
+                for key, value in data.items():
+                    if key in ['name', 'email', 'phone', 'age', 'emergency_contact', 'emergency_phone', 'medical_notes', 'remaining_classes', 'membership_expiry']:
+                        update_fields.append(f"{key} = %s")
+                        values.append(value)
+                
+                if not update_fields:
+                    return {'error': '沒有可更新的欄位'}, 400
+                
+                update_query = f"UPDATE students SET {', '.join(update_fields)} WHERE id = %s"
+                values.append(student_id)
+                
+                cursor.execute(update_query, tuple(values))
+                connection.commit()
+                
+                if cursor.rowcount == 0:
+                    return {'error': '學生未找到或資料未改變'}, 404
+                
+                return {
+                    'success': True,
+                    'message': '學生資料更新成功！'
+                }, 200
+                
+            except mysql.connector.Error as err:
+                print(f"更新學生錯誤: {err}")
+                return {'error': '更新學生失敗'}, 500
+            finally:
+                cursor.close()
+                connection.close()
+                
+        except Exception as e:
+            print(f"更新學生錯誤: {str(e)}")
+            return {'error': '更新學生失敗'}, 500
+
+    def delete(self, student_id):
+        """刪除學生"""
+        try:
+            connection = get_db_connection()
+            if not connection:
+                return {'error': '資料庫連接失敗'}, 500
+            
+            try:
+                cursor = connection.cursor()
+                cursor.execute("DELETE FROM students WHERE id = %s", (student_id,))
+                connection.commit()
+                
+                if cursor.rowcount == 0:
+                    return {'error': '學生未找到'}, 404
+                
+                return {
+                    'success': True,
+                    'message': '學生刪除成功！'
+                }, 200
+                
+            except mysql.connector.Error as err:
+                print(f"刪除學生錯誤: {err}")
+                return {'error': '刪除學生失敗'}, 500
+            finally:
+                cursor.close()
+                connection.close()
+                
+        except Exception as e:
+            print(f"刪除學生錯誤: {str(e)}")
+            return {'error': '刪除學生失敗'}, 500
+
 api.add_resource(HelloWorld, '/')
 api.add_resource(Enrollment, '/api/enrollment')
 api.add_resource(Students, '/api/students')
+api.add_resource(Student, '/api/students/<int:student_id>') # 新增的學生單一資源
 api.add_resource(Teachers, '/api/teachers')
 api.add_resource(Courses, '/api/courses')
 api.add_resource(CourseSchedules, '/api/schedules')
