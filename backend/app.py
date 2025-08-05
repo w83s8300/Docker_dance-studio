@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify
 from flask_restful import Resource, Api
 from flask_cors import CORS
 import mysql.connector
-from datetime import datetime
+from datetime import datetime, date
 import os
 import time
 
@@ -319,11 +319,16 @@ class Students(Resource):
                 cursor.execute("SELECT * FROM students ORDER BY created_at DESC")
                 students = cursor.fetchall()
                 
-                # 轉換 datetime 物件為 ISO 格式字串
+                # 轉換 datetime 和 date 物件為字串
                 for student in students:
+                    # 處理 datetime 欄位
                     for field in ['created_at', 'updated_at']:
                         if student.get(field) and isinstance(student[field], datetime):
                             student[field] = student[field].isoformat()
+                    
+                    # 處理 date 欄位
+                    if student.get('membership_expiry') and isinstance(student['membership_expiry'], date):
+                        student['membership_expiry'] = student['membership_expiry'].isoformat()
                 
                 return {
                     'success': True,
@@ -359,8 +364,8 @@ class Students(Resource):
                 
                 insert_query = """
                 INSERT INTO students 
-                (name, email, phone, age, emergency_contact, emergency_phone, medical_notes)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                (name, email, phone, age, emergency_contact, emergency_phone, medical_notes, remaining_classes, membership_expiry)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """
                 
                 values = (
@@ -370,7 +375,9 @@ class Students(Resource):
                     data.get('age'),
                     data.get('emergency_contact'),
                     data.get('emergency_phone'),
-                    data.get('medical_notes')
+                    data.get('medical_notes'),
+                    data.get('remaining_classes', 0),
+                    data.get('membership_expiry')
                 )
                 
                 cursor.execute(insert_query, values)
