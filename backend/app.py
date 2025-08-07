@@ -338,8 +338,9 @@ class Students(Resource):
                             student[field] = student[field].isoformat()
                     
                     # 處理 date 欄位
-                    if student.get('membership_expiry') and isinstance(student['membership_expiry'], date):
-                        student['membership_expiry'] = student['membership_expiry'].isoformat()
+                    for field in ['membership_expiry', 'date_of_birth']:
+                        if student.get(field) and isinstance(student[field], date):
+                            student[field] = student[field].isoformat()
                 
                 return {
                     'success': True,
@@ -1314,6 +1315,154 @@ api.add_resource(Courses, '/api/courses')
 api.add_resource(Course, '/api/courses/<int:course_id>')
 api.add_resource(CourseSchedules, '/api/schedules')
 
+class CourseSchedule(Resource):
+    def get(self, schedule_id):
+        """取得單一課程時間表"""
+        try:
+            connection = get_db_connection()
+            if not connection:
+                return {'error': '資料庫連接失敗'}, 500
+            
+            try:
+                cursor = connection.cursor(dictionary=True)
+                query = """
+                SELECT cs.*, c.name as course_name, c.level, s.name as style_name, 
+                       t.name as teacher_name, r.name as room_name, 
+                       r.capacity as room_capacity
+                FROM course_schedules cs
+                JOIN courses c ON cs.course_id = c.id
+                LEFT JOIN teachers t ON c.teacher_id = t.id
+                LEFT JOIN styles s ON c.style_id = s.id
+                LEFT JOIN rooms r ON cs.room_id = r.id
+                WHERE cs.id = %s
+                """
+                cursor.execute(query, (schedule_id,))
+                schedule = cursor.fetchone()
+                
+                if not schedule:
+                    return {'error': '課程時間表未找到'}, 404
+                
+                # 轉換時間物件為字串
+                if schedule.get('schedule_date'):
+                    schedule['schedule_date'] = str(schedule['schedule_date'])
+                if schedule.get('start_time'):
+                    schedule['start_time'] = str(schedule['start_time'])
+                if schedule.get('end_time'):
+                    schedule['end_time'] = str(schedule['end_time'])
+                if schedule.get('created_at') and isinstance(schedule['created_at'], datetime):
+                    schedule['created_at'] = schedule['created_at'].isoformat()
+                
+                return {
+                    'success': True,
+                    'schedule': schedule
+                }, 200
+                
+            except mysql.connector.Error as err:
+                print(f"查詢課程時間表錯誤: {err}")
+                return {'error': '查詢課程時間表失敗'}, 500
+            finally:
+                cursor.close()
+                connection.close()
+                
+        except Exception as e:
+            print(f"查詢課程時間表錯誤: {str(e)}")
+            return {'error': '查詢課程時間表失敗'}, 500
+
+    def put(self, schedule_id):
+        """更新課程時間表資料"""
+        try:
+            data = request.get_json()
+            
+            if not data:
+                return {'error': '缺少更新資料'}, 400
+            
+            connection = get_db_connection()
+            if not connection:
+                return {'error': '資料庫連接失敗'}, 500
+            
+            try:
+                cursor = connection.cursor()
+                
+                update_fields = []
+                values = []
+                
+                for key, value in data.items():
+                    if key in ['course_id', 'schedule_date', 'start_time', 'end_time', 'room_id', 'is_active']:
+                        update_fields.append(f"{key} = %s")
+                        values.append(value)
+                
+                if not update_fields:
+                    return {'error': '沒有可更新的欄位'}, 400
+                
+                # 從日期推算星期幾
+                if 'schedule_date' in data:
+                    from datetime import datetime
+                    date_obj = datetime.strptime(data['schedule_date'], '%Y-%m-%d')
+                    day_of_week = date_obj.strftime('%A')
+                    update_fields.append("day_of_week = %s")
+                    values.append(day_of_week)
+
+                update_query = f"UPDATE course_schedules SET {', '.join(update_fields)} WHERE id = %s"
+                values.append(schedule_id)
+                
+                cursor.execute(update_query, tuple(values))
+                connection.commit()
+                
+                if cursor.rowcount == 0:
+                    return {'error': '課程時間表未找到或資料未改變'}, 404
+                
+                return {
+                    'success': True,
+                    'message': '課程時間表資料更新成功！'
+                }, 200
+                
+            except mysql.connector.Error as err:
+                print(f"更新課程時間表錯誤: {err}")
+                return {'error': '更新課程時間表失敗'}, 500
+            except ValueError as e:
+                print(f"日期格式錯誤: {e}")
+                return {'error': '日期格式錯誤，請使用 YYYY-MM-DD 格式'}, 400
+            finally:
+                cursor.close()
+                connection.close()
+                
+        except Exception as e:
+            print(f"更新課程時間表錯誤: {str(e)}")
+            return {'error': '更新課程時間表失敗'}, 500
+
+    def delete(self, schedule_id):
+        """刪除課程時間表"""
+        try:
+            connection = get_db_connection()
+            if not connection:
+                return {'error': '資料庫連接失敗'}, 500
+            
+            try:
+                cursor = connection.cursor()
+                cursor.execute("DELETE FROM course_schedules WHERE id = %s", (schedule_id,))
+                connection.commit()
+                
+                if cursor.rowcount == 0:
+                    return {'error': '課程時間表未找到'}, 404
+                
+                return {
+                    'success': True,
+                    'message': '課程時間表刪除成功！'
+                }, 200
+                
+            except mysql.connector.Error as err:
+                print(f"刪除課程時間表錯誤: {err}")
+                return {'error': '刪除課程時間表失敗'}, 500
+            finally:
+                cursor.close()
+                connection.close()
+                
+        except Exception as e:
+            print(f"刪除課程時間表錯誤: {str(e)}")
+            return {'error': '刪除課程時間表失敗'}, 500
+
+api.add_resource(CourseSchedule, '/api/schedules/<int:schedule_id>')
+
 class Styles(Resource):
     def get(self):
         """取得所有風格"""
@@ -1392,6 +1541,122 @@ class Styles(Resource):
             return {'error': '新增風格失敗'}, 500
 
 api.add_resource(Styles, '/api/styles')
+
+class Style(Resource):
+    def get(self, style_id):
+        """取得單一風格"""
+        try:
+            connection = get_db_connection()
+            if not connection:
+                return {'error': '資料庫連接失敗'}, 500
+            
+            try:
+                cursor = connection.cursor(dictionary=True)
+                cursor.execute("SELECT * FROM styles WHERE id = %s", (style_id,))
+                style = cursor.fetchone()
+                
+                if not style:
+                    return {'error': '風格未找到'}, 404
+                
+                return {
+                    'success': True,
+                    'style': style
+                }, 200
+                
+            except mysql.connector.Error as err:
+                print(f"查詢風格錯誤: {err}")
+                return {'error': '查詢風格失敗'}, 500
+            finally:
+                cursor.close()
+                connection.close()
+                
+        except Exception as e:
+            print(f"查詢風格錯誤: {str(e)}")
+            return {'error': '查詢風格失敗'}, 500
+
+    def put(self, style_id):
+        """更新風格資料"""
+        try:
+            data = request.get_json()
+            
+            if not data:
+                return {'error': '缺少更新資料'}, 400
+            
+            connection = get_db_connection()
+            if not connection:
+                return {'error': '資料庫連接失敗'}, 500
+            
+            try:
+                cursor = connection.cursor()
+                
+                update_fields = []
+                values = []
+                
+                for key, value in data.items():
+                    if key in ['name', 'description']:
+                        update_fields.append(f"{key} = %s")
+                        values.append(value)
+                
+                if not update_fields:
+                    return {'error': '沒有可更新的欄位'}, 400
+                
+                update_query = f"UPDATE styles SET {', '.join(update_fields)} WHERE id = %s"
+                values.append(style_id)
+                
+                cursor.execute(update_query, tuple(values))
+                connection.commit()
+                
+                if cursor.rowcount == 0:
+                    return {'error': '風格未找到或資料未改變'}, 404
+                
+                return {
+                    'success': True,
+                    'message': '風格資料更新成功！'
+                }, 200
+                
+            except mysql.connector.Error as err:
+                print(f"更新風格錯誤: {err}")
+                return {'error': '更新風格失敗'}, 500
+            finally:
+                cursor.close()
+                connection.close()
+                
+        except Exception as e:
+            print(f"更新風格錯誤: {str(e)}")
+            return {'error': '更新風格失敗'}, 500
+
+    def delete(self, style_id):
+        """刪除風格"""
+        try:
+            connection = get_db_connection()
+            if not connection:
+                return {'error': '資料庫連接失敗'}, 500
+            
+            try:
+                cursor = connection.cursor()
+                cursor.execute("DELETE FROM styles WHERE id = %s", (style_id,))
+                connection.commit()
+                
+                if cursor.rowcount == 0:
+                    return {'error': '風格未找到'}, 404
+                
+                return {
+                    'success': True,
+                    'message': '風格刪除成功！'
+                }, 200
+                
+            except mysql.connector.Error as err:
+                print(f"刪除風格錯誤: {err}")
+                return {'error': '刪除風格失敗'}, 500
+            finally:
+                cursor.close()
+                connection.close()
+                
+        except Exception as e:
+            print(f"刪除風格錯誤: {str(e)}")
+            return {'error': '刪除風格失敗'}, 500
+
+api.add_resource(Style, '/api/styles/<int:style_id>')
 
 class Rooms(Resource):
     def get(self):
@@ -1484,6 +1749,122 @@ class Rooms(Resource):
             return {'error': '新增教室失敗'}, 500
 
 api.add_resource(Rooms, '/api/rooms')
+
+class Room(Resource):
+    def get(self, room_id):
+        """取得單一教室"""
+        try:
+            connection = get_db_connection()
+            if not connection:
+                return {'error': '資料庫連接失敗'}, 500
+            
+            try:
+                cursor = connection.cursor(dictionary=True)
+                cursor.execute("SELECT * FROM rooms WHERE id = %s", (room_id,))
+                room = cursor.fetchone()
+                
+                if not room:
+                    return {'error': '教室未找到'}, 404
+                
+                return {
+                    'success': True,
+                    'room': room
+                }, 200
+                
+            except mysql.connector.Error as err:
+                print(f"查詢教室錯誤: {err}")
+                return {'error': '查詢教室失敗'}, 500
+            finally:
+                cursor.close()
+                connection.close()
+                
+        except Exception as e:
+            print(f"查詢教室錯誤: {str(e)}")
+            return {'error': '查詢教室失敗'}, 500
+
+    def put(self, room_id):
+        """更新教室資料"""
+        try:
+            data = request.get_json()
+            
+            if not data:
+                return {'error': '缺少更新資料'}, 400
+            
+            connection = get_db_connection()
+            if not connection:
+                return {'error': '資料庫連接失敗'}, 500
+            
+            try:
+                cursor = connection.cursor()
+                
+                update_fields = []
+                values = []
+                
+                for key, value in data.items():
+                    if key in ['name', 'capacity', 'equipment', 'description', 'hourly_rate', 'is_available']:
+                        update_fields.append(f"{key} = %s")
+                        values.append(value)
+                
+                if not update_fields:
+                    return {'error': '沒有可更新的欄位'}, 400
+                
+                update_query = f"UPDATE rooms SET {', '.join(update_fields)} WHERE id = %s"
+                values.append(room_id)
+                
+                cursor.execute(update_query, tuple(values))
+                connection.commit()
+                
+                if cursor.rowcount == 0:
+                    return {'error': '教室未找到或資料未改變'}, 404
+                
+                return {
+                    'success': True,
+                    'message': '教室資料更新成功！'
+                }, 200
+                
+            except mysql.connector.Error as err:
+                print(f"更新教室錯誤: {err}")
+                return {'error': '更新教室失敗'}, 500
+            finally:
+                cursor.close()
+                connection.close()
+                
+        except Exception as e:
+            print(f"更新教室錯誤: {str(e)}")
+            return {'error': '更新教室失敗'}, 500
+
+    def delete(self, room_id):
+        """刪除教室"""
+        try:
+            connection = get_db_connection()
+            if not connection:
+                return {'error': '資料庫連接失敗'}, 500
+            
+            try:
+                cursor = connection.cursor()
+                cursor.execute("DELETE FROM rooms WHERE id = %s", (room_id,))
+                connection.commit()
+                
+                if cursor.rowcount == 0:
+                    return {'error': '教室未找到'}, 404
+                
+                return {
+                    'success': True,
+                    'message': '教室刪除成功！'
+                }, 200
+                
+            except mysql.connector.Error as err:
+                print(f"刪除教室錯誤: {err}")
+                return {'error': '刪除教室失敗'}, 500
+            finally:
+                cursor.close()
+                connection.close()
+                
+        except Exception as e:
+            print(f"刪除教室錯誤: {str(e)}")
+            return {'error': '刪除教室失敗'}, 500
+
+api.add_resource(Room, '/api/rooms/<int:room_id>')
 
 
 
