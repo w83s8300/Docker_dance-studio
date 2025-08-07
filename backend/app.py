@@ -53,7 +53,7 @@ def init_database_tables():
                 name VARCHAR(100) NOT NULL,
                 email VARCHAR(100) UNIQUE,
                 phone VARCHAR(20),
-                age INT,
+                date_of_birth DATE,
                 emergency_contact VARCHAR(100),
                 emergency_phone VARCHAR(20),
                 medical_notes TEXT,
@@ -86,7 +86,6 @@ def init_database_tables():
                 name VARCHAR(100) NOT NULL,
                 email VARCHAR(100) UNIQUE,
                 phone VARCHAR(20),
-                experience_years INT,
                 bio TEXT,
                 hourly_rate DECIMAL(10,2),
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -316,7 +315,19 @@ class Students(Resource):
             
             try:
                 cursor = connection.cursor(dictionary=True)
-                cursor.execute("SELECT * FROM students ORDER BY created_at DESC")
+                
+                search_name = request.args.get('name')
+                
+                query = "SELECT * FROM students"
+                params = []
+                
+                if search_name:
+                    query += " WHERE name LIKE %s"
+                    params.append(f"%{search_name}%")
+                    
+                query += " ORDER BY created_at DESC"
+                
+                cursor.execute(query, params)
                 students = cursor.fetchall()
                 
                 # 轉換 datetime 和 date 物件為字串
@@ -364,7 +375,7 @@ class Students(Resource):
                 
                 insert_query = """
                 INSERT INTO students 
-                (name, email, phone, age, emergency_contact, emergency_phone, medical_notes, remaining_classes, membership_expiry)
+                (name, email, phone, date_of_birth, emergency_contact, emergency_phone, medical_notes, remaining_classes, membership_expiry)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """
                 
@@ -372,7 +383,7 @@ class Students(Resource):
                     data.get('name'),
                     data.get('email'),
                     data.get('phone'),
-                    data.get('age'),
+                    data.get('date_of_birth'),
                     data.get('emergency_contact'),
                     data.get('emergency_phone'),
                     data.get('medical_notes'),
@@ -413,8 +424,19 @@ class Teachers(Resource):
             try:
                 cursor = connection.cursor(dictionary=True)
                 
+                search_name = request.args.get('name')
+                
                 # 查詢所有老師
-                cursor.execute("SELECT * FROM teachers ORDER BY created_at DESC")
+                query = "SELECT * FROM teachers"
+                params = []
+                
+                if search_name:
+                    query += " WHERE name LIKE %s"
+                    params.append(f"%{search_name}%")
+                
+                query += " ORDER BY created_at DESC"
+                
+                cursor.execute(query, params)
                 teachers = cursor.fetchall()
                 
                 # 查詢所有老師的風格
@@ -485,15 +507,14 @@ class Teachers(Resource):
                 # 插入老師基本資料
                 insert_teacher_query = """
                 INSERT INTO teachers 
-                (name, email, phone, experience_years, bio, hourly_rate)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                (name, email, phone, bio, hourly_rate)
+                VALUES (%s, %s, %s, %s, %s)
                 """
                 
                 teacher_values = (
                     data.get('name'),
                     data.get('email'),
                     data.get('phone'),
-                    data.get('experience_years'),
                     data.get('bio'),
                     data.get('hourly_rate')
                 )
@@ -823,7 +844,7 @@ class Student(Resource):
                 values = []
                 
                 for key, value in data.items():
-                    if key in ['name', 'email', 'phone', 'age', 'emergency_contact', 'emergency_phone', 'medical_notes', 'remaining_classes', 'membership_expiry']:
+                    if key in ['name', 'email', 'phone', 'date_of_birth', 'emergency_contact', 'emergency_phone', 'medical_notes', 'remaining_classes', 'membership_expiry']:
                         update_fields.append(f"{key} = %s")
                         values.append(value)
                 
@@ -955,7 +976,7 @@ class Teacher(Resource):
                 values = []
                 
                 for key, value in data.items():
-                    if key in ['name', 'email', 'phone', 'experience_years', 'bio', 'hourly_rate']:
+                    if key in ['name', 'email', 'phone', 'bio', 'hourly_rate']:
                         update_fields.append(f"{key} = %s")
                         values.append(value)
                 
