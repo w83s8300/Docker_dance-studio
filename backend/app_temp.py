@@ -7,12 +7,12 @@ import os
 import time
 
 app = Flask(__name__)
-CORS(app)  # 允許跨域請求
+CORS(app)  # ?�許跨�?請�?
 api = Api(app)
 
-# 資料庫連接配置
+# 資�?庫�?��?�置
 DB_CONFIG = {
-    'host': 'db',  # Docker Compose 中的服務名稱
+    'host': 'db',  # Docker Compose 中�??��??�稱
     'port': 3306,
     'user': 'user',
     'password': 'userpass',
@@ -21,7 +21,7 @@ DB_CONFIG = {
 }
 
 def get_db_connection():
-    """取得資料庫連接，包含重試機制"""
+    """?��?資�?庫�?��，�??��?試�???""
     max_retries = 5
     retry_delay = 2
     
@@ -30,23 +30,23 @@ def get_db_connection():
             connection = mysql.connector.connect(**DB_CONFIG)
             return connection
         except mysql.connector.Error as err:
-            print(f"資料庫連接嘗試 {attempt + 1}/{max_retries} 失敗: {err}")
+            print(f"資�?庫�?��?�試 {attempt + 1}/{max_retries} 失�?: {err}")
             if attempt < max_retries - 1:
-                print(f"等待 {retry_delay} 秒後重試...")
+                print(f"等�? {retry_delay} 秒�??�試...")
                 time.sleep(retry_delay)
             else:
-                print("資料庫連接失敗，已達最大重試次數")
+                print("資�?庫�?��失�?，已?��?大�?試次??)
                 return None
 
 def init_database_tables():
-    """初始化所有資料庫表格，包含重試機制"""
-    print("正在初始化資料庫表格...")
+    """?��??��??��??�庫表格，�??��?試�???""
+    print("�?��?��??��??�庫表格...")
     connection = get_db_connection()
     if connection:
         try:
             cursor = connection.cursor()
             
-            # 學生表格
+            # 學�?表格
             students_table = """
             CREATE TABLE IF NOT EXISTS students (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -57,14 +57,14 @@ def init_database_tables():
                 emergency_contact VARCHAR(100),
                 emergency_phone VARCHAR(20),
                 medical_notes TEXT,
-                remaining_classes INT DEFAULT 0 COMMENT '剩餘堂數',
-                membership_expiry DATE COMMENT '會員到期日',
+                remaining_classes INT DEFAULT 0 COMMENT '?��??�數',
+                membership_expiry DATE COMMENT '?�員?��???,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             )
             """
             
-            # 教室表格
+            # ?�室表格
             rooms_table = """
             CREATE TABLE IF NOT EXISTS rooms (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -79,8 +79,7 @@ def init_database_tables():
             )
             """
             
-            # 老師表格（移除 specialties 欄位）
-            teachers_table = """
+            # ?�師表格（移??specialties 欄�?�?            teachers_table = """
             CREATE TABLE IF NOT EXISTS teachers (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 name VARCHAR(100) NOT NULL,
@@ -102,8 +101,7 @@ def init_database_tables():
             )
             """
 
-            # 老師-風格關聯表
-            teacher_styles_table = """
+            # ?�師-風格?�聯�?            teacher_styles_table = """
             CREATE TABLE IF NOT EXISTS teacher_styles (
                 teacher_id INT NOT NULL,
                 style_id INT NOT NULL,
@@ -113,7 +111,7 @@ def init_database_tables():
             )
             """
             
-            # 課程表格
+            # 課�?表格
             courses_table = """
             CREATE TABLE IF NOT EXISTS courses (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -132,7 +130,7 @@ def init_database_tables():
             )
             """
             
-            # 更新課程時間表格
+            # ?�新課�??��?表格
             schedules_table = """
             CREATE TABLE IF NOT EXISTS course_schedules (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -149,7 +147,7 @@ def init_database_tables():
             )
             """
             
-            # 報名表格
+            # ?��?表格
             enrollments_table = """
             CREATE TABLE IF NOT EXISTS enrollments (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -171,7 +169,7 @@ def init_database_tables():
             )
             """
             
-            # 執行表格建立
+            # ?��?表格建�?
             cursor.execute(students_table)
             cursor.execute(rooms_table)
             cursor.execute(teachers_table)
@@ -181,15 +179,15 @@ def init_database_tables():
             cursor.execute(schedules_table)
             cursor.execute(enrollments_table)
             connection.commit()
-            print("所有資料庫表格初始化成功")
+            print("?�?��??�庫表格?��??��???)
             
         except mysql.connector.Error as err:
-            print(f"建立表格錯誤: {err}")
+            print(f"建�?表格?�誤: {err}")
         finally:
             cursor.close()
             connection.close()
     else:
-        print("無法初始化資料庫表格 - 將在執行時重試")
+        print("?��??��??��??�庫表格 - 將在?��??��?�?)
 
 class HelloWorld(Resource):
     def get(self):
@@ -200,46 +198,45 @@ class Enrollment(Resource):
         try:
             data = request.get_json()
             
-            # 驗證必要欄位
+            # 驗�?必�?欄�?
             if not data or 'studentName' not in data or 'lesson' not in data:
-                return {'error': '缺少必要欄位'}, 400
+                return {'error': '缺�?必�?欄�?'}, 400
             
             student_name = data['studentName'].strip()
             lesson = data['lesson']
             
             if not student_name:
-                return {'error': '請輸入有效的姓名'}, 400
+                return {'error': '請輸?��??��?姓�?'}, 400
             
-            # 連接資料庫
-            connection = get_db_connection()
+            # ??��資�?�?            connection = get_db_connection()
             if not connection:
-                return {'error': '資料庫連接失敗'}, 500
+                return {'error': '資�?庫�?��失�?'}, 500
             
             try:
                 cursor = connection.cursor(dictionary=True)
                 
-                # 先查詢學生是否存在並取得剩餘堂數
+                # ?�查詢學?�是?��??�並?��??��??�數
                 student_query = "SELECT id, name, remaining_classes FROM students WHERE name = %s"
                 cursor.execute(student_query, (student_name,))
                 student = cursor.fetchone()
                 
                 if not student:
-                    return {'error': f'查無學生「{student_name}」，請至櫃檯辦理會員後再進行報名'}, 400
+                    return {'error': f'?�無學�??�{student_name}?��?請至櫃檯辦�??�員後�??��??��?'}, 400
                 
-                # 檢查剩餘堂數
+                # 檢查?��??�數
                 remaining_classes = student['remaining_classes'] or 0
                 if remaining_classes <= 0:
-                    return {'error': f'您的剩餘堂數不足（目前剩餘：{remaining_classes}堂），請至櫃檯儲值後再進行報名'}, 400
+                    return {'error': f'?��??��??�數不足（目?�剩餘�?{remaining_classes}?��?，�??��?檯儲?��??�進�??��?'}, 400
                 
-                # 開始事務
+                # ?��?事�?
                 cursor.execute("START TRANSACTION")
                 
-                # 扣除一堂課
+                # ??��一?�課
                 new_remaining_classes = remaining_classes - 1
                 update_query = "UPDATE students SET remaining_classes = %s WHERE id = %s"
                 cursor.execute(update_query, (new_remaining_classes, student['id']))
                 
-                # 插入報名記錄
+                # ?�入?��?記�?
                 insert_query = """
                 INSERT INTO enrollments 
                 (student_name, lesson_name, lesson_time, lesson_day, 
@@ -259,24 +256,24 @@ class Enrollment(Resource):
                 
                 cursor.execute(insert_query, values)
                 
-                # 提交事務
+                # ?�交事�?
                 connection.commit()
                 
                 enrollment_id = cursor.lastrowid
                 
-                print(f"=== 新的課程報名 ===")
-                print(f"報名編號: {enrollment_id}")
-                print(f"學生姓名: {student_name}")
-                print(f"課程名稱: {lesson.get('name')}")
-                print(f"上課時間: {lesson.get('day')} {lesson.get('time')}")
-                print(f"授課老師: {lesson.get('teacher')}")
-                print(f"扣除前堂數: {remaining_classes}")
-                print(f"扣除後堂數: {new_remaining_classes}")
+                print(f"=== ?��?課�??��? ===")
+                print(f"?��?編�?: {enrollment_id}")
+                print(f"學�?姓�?: {student_name}")
+                print(f"課�??�稱: {lesson.get('name')}")
+                print(f"上課?��?: {lesson.get('day')} {lesson.get('time')}")
+                print(f"?�課?�師: {lesson.get('teacher')}")
+                print(f"??��?��??? {remaining_classes}")
+                print(f"??��後�??? {new_remaining_classes}")
                 print("==================")
                 
                 return {
                     'success': True,
-                    'message': '報名成功！',
+                    'message': '?��??��?�?,
                     'enrollment': {
                         'id': enrollment_id,
                         'studentName': student_name,
@@ -288,31 +285,31 @@ class Enrollment(Resource):
                 }, 201
                 
             except mysql.connector.Error as err:
-                print(f"資料庫操作錯誤: {err}")
-                # 回滾事務
+                print(f"資�?庫�?作錯�? {err}")
+                # ?�滾事�?
                 connection.rollback()
-                return {'error': '報名處理失敗'}, 500
+                return {'error': '?��??��?失�?'}, 500
             finally:
                 cursor.close()
                 connection.close()
                 
         except Exception as e:
-            print(f"報名處理錯誤: {str(e)}")
-            return {'error': '報名處理失敗，請稍後再試'}, 500
+            print(f"?��??��??�誤: {str(e)}")
+            return {'error': '?��??��?失�?，�?稍�??�試'}, 500
     
     def get(self):
-        """取得所有報名記錄"""
+        """?��??�?�報?��???""
         try:
             connection = get_db_connection()
             if not connection:
-                return {'error': '資料庫連接失敗'}, 500
+                return {'error': '資�?庫�?��失�?'}, 500
             
             try:
                 cursor = connection.cursor(dictionary=True)
                 cursor.execute("SELECT * FROM enrollments ORDER BY enrollment_time DESC")
                 enrollments = cursor.fetchall()
                 
-                # 轉換 datetime 物件為 ISO 格式字串
+                # 轉�? datetime ?�件??ISO ?��?字串
                 for enrollment in enrollments:
                     if enrollment.get('enrollment_time') and isinstance(enrollment['enrollment_time'], datetime):
                         enrollment['enrollment_time'] = enrollment['enrollment_time'].isoformat()
@@ -324,23 +321,23 @@ class Enrollment(Resource):
                 }, 200
                 
             except mysql.connector.Error as err:
-                print(f"查詢錯誤: {err}")
-                return {'error': '查詢失敗'}, 500
+                print(f"?�詢?�誤: {err}")
+                return {'error': '?�詢失�?'}, 500
             finally:
                 cursor.close()
                 connection.close()
                 
         except Exception as e:
-            print(f"查詢錯誤: {str(e)}")
-            return {'error': '查詢失敗'}, 500
+            print(f"?�詢?�誤: {str(e)}")
+            return {'error': '?�詢失�?'}, 500
 
 class Students(Resource):
     def get(self):
-        """取得所有學生"""
+        """?��??�?�學??""
         try:
             connection = get_db_connection()
             if not connection:
-                return {'error': '資料庫連接失敗'}, 500
+                return {'error': '資�?庫�?��失�?'}, 500
             
             try:
                 cursor = connection.cursor(dictionary=True)
@@ -359,14 +356,13 @@ class Students(Resource):
                 cursor.execute(query, params)
                 students = cursor.fetchall()
                 
-                # 轉換 datetime 和 date 物件為字串
-                for student in students:
-                    # 處理 datetime 欄位
+                # 轉�? datetime ??date ?�件?��?�?                for student in students:
+                    # ?��? datetime 欄�?
                     for field in ['created_at', 'updated_at']:
                         if student.get(field) and isinstance(student[field], datetime):
                             student[field] = student[field].isoformat()
                     
-                    # 處理 date 欄位
+                    # ?��? date 欄�?
                     for field in ['membership_expiry', 'date_of_birth']:
                         if student.get(field) and isinstance(student[field], date):
                             student[field] = student[field].isoformat()
@@ -378,27 +374,27 @@ class Students(Resource):
                 }, 200
                 
             except mysql.connector.Error as err:
-                print(f"查詢學生錯誤: {err}")
-                return {'error': '查詢學生失敗'}, 500
+                print(f"?�詢學�??�誤: {err}")
+                return {'error': '?�詢學�?失�?'}, 500
             finally:
                 cursor.close()
                 connection.close()
                 
         except Exception as e:
-            print(f"查詢學生錯誤: {str(e)}")
-            return {'error': '查詢學生失敗'}, 500
+            print(f"?�詢學�??�誤: {str(e)}")
+            return {'error': '?�詢學�?失�?'}, 500
     
     def post(self):
-        """新增學生"""
+        """?��?學�?"""
         try:
             data = request.get_json()
             
             if not data or 'name' not in data:
-                return {'error': '缺少必要欄位：姓名'}, 400
+                return {'error': '缺�?必�?欄�?：�???}, 400
             
             connection = get_db_connection()
             if not connection:
-                return {'error': '資料庫連接失敗'}, 500
+                return {'error': '資�?庫�?��失�?'}, 500
             
             try:
                 cursor = connection.cursor()
@@ -428,35 +424,35 @@ class Students(Resource):
                 
                 return {
                     'success': True,
-                    'message': '學生新增成功！',
+                    'message': '學�??��??��?�?,
                     'student_id': student_id
                 }, 201
                 
             except mysql.connector.Error as err:
-                print(f"新增學生錯誤: {err}")
-                return {'error': '新增學生失敗'}, 500
+                print(f"?��?學�??�誤: {err}")
+                return {'error': '?��?學�?失�?'}, 500
             finally:
                 cursor.close()
                 connection.close()
                 
         except Exception as e:
-            print(f"新增學生錯誤: {str(e)}")
-            return {'error': '新增學生失敗'}, 500
+            print(f"?��?學�??�誤: {str(e)}")
+            return {'error': '?��?學�?失�?'}, 500
 
 class Teachers(Resource):
     def get(self):
-        """取得所有老師及其風格"""
+        """?��??�?�老師?�其風格"""
         try:
             connection = get_db_connection()
             if not connection:
-                return {'error': '資料庫連接失敗'}, 500
+                return {'error': '資�?庫�?��失�?'}, 500
             
             try:
                 cursor = connection.cursor(dictionary=True)
                 
                 search_name = request.args.get('name')
                 
-                # 查詢所有老師
+                # ?�詢?�?�老師
                 query = "SELECT * FROM teachers"
                 params = []
                 
@@ -469,8 +465,7 @@ class Teachers(Resource):
                 cursor.execute(query, params)
                 teachers = cursor.fetchall()
                 
-                # 查詢所有老師的風格
-                teacher_ids = [teacher['id'] for teacher in teachers]
+                # ?�詢?�?�老師?�風??                teacher_ids = [teacher['id'] for teacher in teachers]
                 if teacher_ids:
                     style_query = """
                     SELECT ts.teacher_id, s.id as style_id, s.name as style_name
@@ -482,19 +477,18 @@ class Teachers(Resource):
                     cursor.execute(style_query, teacher_ids)
                     styles = cursor.fetchall()
                     
-                    # 將風格整理到對應的老師物件中
-                    teacher_styles = {teacher_id: [] for teacher_id in teacher_ids}
+                    # 將風?�整?�到對�??�老師?�件�?                    teacher_styles = {teacher_id: [] for teacher_id in teacher_ids}
                     for style in styles:
                         teacher_styles[style['teacher_id']].append({
                             'id': style['style_id'],
                             'name': style['style_name']
                         })
                     
-                    # 將風格加入老師物件
+                    # 將風?��??�老師?�件
                     for teacher in teachers:
                         teacher['styles'] = teacher_styles.get(teacher['id'], [])
 
-                # 轉換 datetime 和 Decimal 物件為 ISO 格式字串
+                # 轉�? datetime ??Decimal ?�件??ISO ?��?字串
                 for teacher in teachers:
                     if teacher.get('hourly_rate'):
                         teacher['hourly_rate'] = str(teacher['hourly_rate'])
@@ -509,32 +503,32 @@ class Teachers(Resource):
                 }, 200
                 
             except mysql.connector.Error as err:
-                print(f"查詢老師錯誤: {err}")
-                return {'error': '查詢老師失敗'}, 500
+                print(f"?�詢?�師?�誤: {err}")
+                return {'error': '?�詢?�師失�?'}, 500
             finally:
                 cursor.close()
                 connection.close()
                 
         except Exception as e:
-            print(f"查詢老師錯誤: {str(e)}")
-            return {'error': '查詢老師失敗'}, 500
+            print(f"?�詢?�師?�誤: {str(e)}")
+            return {'error': '?�詢?�師失�?'}, 500
     
     def post(self):
-        """新增老師"""
+        """?��??�師"""
         try:
             data = request.get_json()
             
             if not data or 'name' not in data:
-                return {'error': '缺少必要欄位：姓名'}, 400
+                return {'error': '缺�?必�?欄�?：�???}, 400
             
             connection = get_db_connection()
             if not connection:
-                return {'error': '資料庫連接失敗'}, 500
+                return {'error': '資�?庫�?��失�?'}, 500
             
             try:
                 cursor = connection.cursor()
                 
-                # 插入老師基本資料
+                # ?�入?�師?�本資�?
                 insert_teacher_query = """
                 INSERT INTO teachers 
                 (name, email, phone, bio, hourly_rate)
@@ -552,7 +546,7 @@ class Teachers(Resource):
                 cursor.execute(insert_teacher_query, teacher_values)
                 teacher_id = cursor.lastrowid
                 
-                # 處理老師與風格的關聯
+                # ?��??�師?�風?��??�聯
                 style_ids = data.get('style_ids', [])
                 if style_ids:
                     insert_style_query = """
@@ -566,28 +560,28 @@ class Teachers(Resource):
                 
                 return {
                     'success': True,
-                    'message': '老師新增成功！',
+                    'message': '?�師?��??��?�?,
                     'teacher_id': teacher_id
                 }, 201
                 
             except mysql.connector.Error as err:
-                print(f"新增老師錯誤: {err}")
-                return {'error': '新增老師失敗'}, 500
+                print(f"?��??�師?�誤: {err}")
+                return {'error': '?��??�師失�?'}, 500
             finally:
                 cursor.close()
                 connection.close()
                 
         except Exception as e:
-            print(f"新增老師錯誤: {str(e)}")
-            return {'error': '新增老師失敗'}, 500
+            print(f"?��??�師?�誤: {str(e)}")
+            return {'error': '?��??�師失�?'}, 500
 
 class Courses(Resource):
     def get(self):
-        """取得所有課程（包含老師資訊）"""
+        """?��??�?�課程�??�含?�師資�?�?""
         try:
             connection = get_db_connection()
             if not connection:
-                return {'error': '資料庫連接失敗'}, 500
+                return {'error': '資�?庫�?��失�?'}, 500
             
             try:
                 cursor = connection.cursor(dictionary=True)
@@ -601,12 +595,12 @@ class Courses(Resource):
                 cursor.execute(query)
                 courses = cursor.fetchall()
                 
-                # 轉換 Decimal 和 datetime 物件為可 JSON 序列化的格式
+                # 轉�? Decimal ??datetime ?�件?�可 JSON 序�??��??��?
                 for course in courses:
-                    # 將 price 欄位轉為字串
+                    # �?price 欄�?轉為字串
                     if 'price' in course and course['price'] is not None:
                         course['price'] = str(course['price'])
-                    # 轉換 datetime 物件為 ISO 格式字串
+                    # 轉�? datetime ?�件??ISO ?��?字串
                     for field in ['created_at', 'updated_at']:
                         if course.get(field) and isinstance(course[field], datetime):
                             course[field] = course[field].isoformat()
@@ -618,35 +612,35 @@ class Courses(Resource):
                 }, 200
                 
             except mysql.connector.Error as err:
-                print(f"查詢課程錯誤: {err}")
-                return {'error': f'查詢課程失敗: {err}'}, 500
+                print(f"?�詢課�??�誤: {err}")
+                return {'error': f'?�詢課�?失�?: {err}'}, 500
             finally:
                 cursor.close()
                 connection.close()
                 
         except Exception as e:
-            print(f"查詢課程錯誤: {str(e)}")
-            return {'error': '查詢課程失敗'}, 500
+            print(f"?�詢課�??�誤: {str(e)}")
+            return {'error': '?�詢課�?失�?'}, 500
     
     def post(self):
-        """新增課程"""
+        """?��?課�?"""
         try:
             data = request.get_json()
             
             if not data or 'name' not in data or 'level' not in data:
-                return {'error': '缺少必要欄位：課程名稱、難度級別'}, 400
+                return {'error': '缺�?必�?欄�?：課程�?稱、難度�???}, 400
             
             connection = get_db_connection()
             if not connection:
-                return {'error': '資料庫連接失敗'}, 500
+                return {'error': '資�?庫�?��失�?'}, 500
             
             try:
                 cursor = connection.cursor()
                 
                 insert_query = """
                 INSERT INTO courses 
-                (name, description, level, style_id, duration_minutes, max_students, price, teacher_id)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                (name, description, level, style_id, duration_minutes, max_students, price, classes_required, teacher_id)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """
                 
                 values = (
@@ -657,6 +651,7 @@ class Courses(Resource):
                     data.get('duration_minutes', 60),
                     data.get('max_students', 15),
                     data.get('price'),
+                    data.get('classes_required', 1),
                     data.get('teacher_id')
                 )
                 
@@ -667,37 +662,37 @@ class Courses(Resource):
                 
                 return {
                     'success': True,
-                    'message': '課程新增成功！',
+                    'message': '課�??��??��?�?,
                     'course_id': course_id
                 }, 201
                 
             except mysql.connector.Error as err:
-                print(f"新增課程錯誤: {err}")
-                return {'error': '新增課程失敗'}, 500
+                print(f"?��?課�??�誤: {err}")
+                return {'error': '?��?課�?失�?'}, 500
             finally:
                 cursor.close()
                 connection.close()
                 
         except Exception as e:
-            print(f"新增課程錯誤: {str(e)}")
-            return {'error': '新增課程失敗'}, 500
+            print(f"?��?課�??�誤: {str(e)}")
+            return {'error': '?��?課�?失�?'}, 500
 
 class CourseSchedules(Resource):
     def get(self):
-        """取得所有課程時間表，支援日期範圍過濾"""
+        """?��??�?�課程�??�表，支?�日?��??��?�?""
         try:
             connection = get_db_connection()
             if not connection:
-                return {'error': '資料庫連接失敗'}, 500
+                return {'error': '資�?庫�?��失�?'}, 500
 
             try:
                 cursor = connection.cursor(dictionary=True)
 
-                # 取得查詢參數
+                # ?��??�詢?�數
                 start_date = request.args.get('start_date')
                 end_date = request.args.get('end_date')
 
-                # 基本查詢語句
+                # ?�本?�詢語句
                 query = """
                 SELECT cs.*, c.name as course_name, c.level, s.name as style_name, 
                        t.name as teacher_name, r.name as room_name, 
@@ -710,7 +705,7 @@ class CourseSchedules(Resource):
                 WHERE cs.is_active = TRUE
                 """
 
-                # 添加日期範圍過濾條件
+                # 添�??��?範�??�濾條件
                 params = []
                 if start_date:
                     query += " AND cs.schedule_date >= %s"
@@ -724,8 +719,7 @@ class CourseSchedules(Resource):
                 cursor.execute(query, params)
                 schedules = cursor.fetchall()
 
-                # 轉換時間物件為字串
-                for schedule in schedules:
+                # 轉�??��??�件?��?�?                for schedule in schedules:
                     if schedule.get('schedule_date'):
                         schedule['schedule_date'] = str(schedule['schedule_date'])
                     if schedule.get('start_time'):
@@ -742,33 +736,33 @@ class CourseSchedules(Resource):
                 }, 200
 
             except mysql.connector.Error as err:
-                print(f"查詢課程時間表錯誤: {err}")
-                return {'error': f'查詢課程時間表失敗: {err}'}, 500
+                print(f"?�詢課�??��?表錯�? {err}")
+                return {'error': f'?�詢課�??��?表失?? {err}'}, 500
             finally:
                 cursor.close()
                 connection.close()
 
         except Exception as e:
-            print(f"查詢課程時間表錯誤: {str(e)}")
-            return {'error': f'查詢課程時間表失敗: {str(e)}'}, 500
+            print(f"?�詢課�??��?表錯�? {str(e)}")
+            return {'error': f'?�詢課�??��?表失?? {str(e)}'}, 500
 
     def post(self):
-        """新增課程時間表"""
+        """?��?課�??��?�?""
         try:
             data = request.get_json()
             
             required_fields = ['course_id', 'schedule_date', 'start_time', 'end_time']
             if not data or not all(field in data for field in required_fields):
-                return {'error': '缺少必要欄位：course_id, schedule_date, start_time, end_time'}, 400
+                return {'error': '缺�?必�?欄�?：course_id, schedule_date, start_time, end_time'}, 400
             
             connection = get_db_connection()
             if not connection:
-                return {'error': '資料庫連接失敗'}, 500
+                return {'error': '資�?庫�?��失�?'}, 500
             
             try:
                 cursor = connection.cursor()
                 
-                # 從日期推算星期幾
+                # 從日?�推算�??�幾
                 from datetime import datetime
                 date_obj = datetime.strptime(data['schedule_date'], '%Y-%m-%d')
                 day_of_week = date_obj.strftime('%A')  # Monday, Tuesday, etc.
@@ -796,32 +790,32 @@ class CourseSchedules(Resource):
                 
                 return {
                     'success': True,
-                    'message': '課程時間表新增成功！',
+                    'message': '課�??��?表新增�??��?',
                     'schedule_id': schedule_id,
                     'day_of_week': day_of_week
                 }, 201
                 
             except mysql.connector.Error as err:
-                print(f"新增課程時間表錯誤: {err}")
-                return {'error': f'新增課程時間表失敗: {err}'}, 500
+                print(f"?��?課�??��?表錯�? {err}")
+                return {'error': f'?��?課�??��?表失?? {err}'}, 500
             except ValueError as e:
-                print(f"日期格式錯誤: {e}")
-                return {'error': '日期格式錯誤，請使用 YYYY-MM-DD 格式'}, 400
+                print(f"?��??��??�誤: {e}")
+                return {'error': '?��??��??�誤，�?使用 YYYY-MM-DD ?��?'}, 400
             finally:
                 cursor.close()
                 connection.close()
                 
         except Exception as e:
-            print(f"新增課程時間表錯誤: {str(e)}")
-            return {'error': '新增課程時間表失敗'}, 500
+            print(f"?��?課�??��?表錯�? {str(e)}")
+            return {'error': '?��?課�??��?表失??}, 500
 
 class Student(Resource):
     def get(self, student_id):
-        """取得單一學生"""
+        """?��??��?學�?"""
         try:
             connection = get_db_connection()
             if not connection:
-                return {'error': '資料庫連接失敗'}, 500
+                return {'error': '資�?庫�?��失�?'}, 500
             
             try:
                 cursor = connection.cursor(dictionary=True)
@@ -829,10 +823,9 @@ class Student(Resource):
                 student = cursor.fetchone()
                 
                 if not student:
-                    return {'error': '學生未找到'}, 404
+                    return {'error': '學�??�找??}, 404
                 
-                # 轉換 datetime 和 date 物件為字串
-                for field in ['created_at', 'updated_at']:
+                # 轉�? datetime ??date ?�件?��?�?                for field in ['created_at', 'updated_at']:
                     if student.get(field) and isinstance(student[field], datetime):
                         student[field] = student[field].isoformat()
                 
@@ -845,27 +838,27 @@ class Student(Resource):
                 }, 200
                 
             except mysql.connector.Error as err:
-                print(f"查詢學生錯誤: {err}")
-                return {'error': '查詢學生失敗'}, 500
+                print(f"?�詢學�??�誤: {err}")
+                return {'error': '?�詢學�?失�?'}, 500
             finally:
                 cursor.close()
                 connection.close()
                 
         except Exception as e:
-            print(f"查詢學生錯誤: {str(e)}")
-            return {'error': '查詢學生失敗'}, 500
+            print(f"?�詢學�??�誤: {str(e)}")
+            return {'error': '?�詢學�?失�?'}, 500
 
     def put(self, student_id):
-        """更新學生資料"""
+        """?�新學�?資�?"""
         try:
             data = request.get_json()
             
             if not data:
-                return {'error': '缺少更新資料'}, 400
+                return {'error': '缺�??�新資�?'}, 400
             
             connection = get_db_connection()
             if not connection:
-                return {'error': '資料庫連接失敗'}, 500
+                return {'error': '資�?庫�?��失�?'}, 500
             
             try:
                 cursor = connection.cursor()
@@ -879,7 +872,7 @@ class Student(Resource):
                         values.append(value)
                 
                 if not update_fields:
-                    return {'error': '沒有可更新的欄位'}, 400
+                    return {'error': '沒�??�更?��?欄�?'}, 400
                 
                 update_query = f"UPDATE students SET {', '.join(update_fields)} WHERE id = %s"
                 values.append(student_id)
@@ -888,30 +881,30 @@ class Student(Resource):
                 connection.commit()
                 
                 if cursor.rowcount == 0:
-                    return {'error': '學生未找到或資料未改變'}, 404
+                    return {'error': '學�??�找?��?資�??�改�?}, 404
                 
                 return {
                     'success': True,
-                    'message': '學生資料更新成功！'
+                    'message': '學�?資�??�新?��?�?
                 }, 200
                 
             except mysql.connector.Error as err:
-                print(f"更新學生錯誤: {err}")
-                return {'error': '更新學生失敗'}, 500
+                print(f"?�新學�??�誤: {err}")
+                return {'error': '?�新學�?失�?'}, 500
             finally:
                 cursor.close()
                 connection.close()
                 
         except Exception as e:
-            print(f"更新學生錯誤: {str(e)}")
-            return {'error': '更新學生失敗'}, 500
+            print(f"?�新學�??�誤: {str(e)}")
+            return {'error': '?�新學�?失�?'}, 500
 
     def delete(self, student_id):
-        """刪除學生"""
+        """?�除學�?"""
         try:
             connection = get_db_connection()
             if not connection:
-                return {'error': '資料庫連接失敗'}, 500
+                return {'error': '資�?庫�?��失�?'}, 500
             
             try:
                 cursor = connection.cursor()
@@ -919,31 +912,31 @@ class Student(Resource):
                 connection.commit()
                 
                 if cursor.rowcount == 0:
-                    return {'error': '學生未找到'}, 404
+                    return {'error': '學�??�找??}, 404
                 
                 return {
                     'success': True,
-                    'message': '學生刪除成功！'
+                    'message': '學�??�除?��?�?
                 }, 200
                 
             except mysql.connector.Error as err:
-                print(f"刪除學生錯誤: {err}")
-                return {'error': '刪除學生失敗'}, 500
+                print(f"?�除學�??�誤: {err}")
+                return {'error': '?�除學�?失�?'}, 500
             finally:
                 cursor.close()
                 connection.close()
                 
         except Exception as e:
-            print(f"刪除學生錯誤: {str(e)}")
-            return {'error': '刪除學生失敗'}, 500
+            print(f"?�除學�??�誤: {str(e)}")
+            return {'error': '?�除學�?失�?'}, 500
 
 class Teacher(Resource):
     def get(self, teacher_id):
-        """取得單一老師"""
+        """?��??��??�師"""
         try:
             connection = get_db_connection()
             if not connection:
-                return {'error': '資料庫連接失敗'}, 500
+                return {'error': '資�?庫�?��失�?'}, 500
             
             try:
                 cursor = connection.cursor(dictionary=True)
@@ -951,10 +944,9 @@ class Teacher(Resource):
                 teacher = cursor.fetchone()
                 
                 if not teacher:
-                    return {'error': '老師未找到'}, 404
+                    return {'error': '?�師?�找??}, 404
                 
-                # 查詢老師的風格
-                style_query = """
+                # ?�詢?�師?�風??                style_query = """
                 SELECT s.id, s.name
                 FROM teacher_styles ts
                 JOIN styles s ON ts.style_id = s.id
@@ -964,8 +956,7 @@ class Teacher(Resource):
                 styles = cursor.fetchall()
                 teacher['styles'] = styles
                 
-                # 轉換 datetime 和 Decimal 物件為字串
-                if teacher.get('hourly_rate'):
+                # 轉�? datetime ??Decimal ?�件?��?�?                if teacher.get('hourly_rate'):
                     teacher['hourly_rate'] = str(teacher['hourly_rate'])
                 for field in ['created_at', 'updated_at']:
                     if teacher.get(field) and isinstance(teacher[field], datetime):
@@ -977,27 +968,27 @@ class Teacher(Resource):
                 }, 200
                 
             except mysql.connector.Error as err:
-                print(f"查詢老師錯誤: {err}")
-                return {'error': '查詢老師失敗'}, 500
+                print(f"?�詢?�師?�誤: {err}")
+                return {'error': '?�詢?�師失�?'}, 500
             finally:
                 cursor.close()
                 connection.close()
                 
         except Exception as e:
-            print(f"查詢老師錯誤: {str(e)}")
-            return {'error': '查詢老師失敗'}, 500
+            print(f"?�詢?�師?�誤: {str(e)}")
+            return {'error': '?�詢?�師失�?'}, 500
 
     def put(self, teacher_id):
-        """更新老師資料"""
+        """?�新?�師資�?"""
         try:
             data = request.get_json()
             
             if not data:
-                return {'error': '缺少更新資料'}, 400
+                return {'error': '缺�??�新資�?'}, 400
             
             connection = get_db_connection()
             if not connection:
-                return {'error': '資料庫連接失敗'}, 500
+                return {'error': '資�?庫�?��失�?'}, 500
             
             try:
                 cursor = connection.cursor()
@@ -1015,12 +1006,11 @@ class Teacher(Resource):
                     update_values = tuple(values) + (teacher_id,)
                     cursor.execute(update_query, update_values)
                 
-                # 更新老師與風格的關聯
+                # ?�新?�師?�風?��??�聯
                 if 'style_ids' in data:
                     style_ids = data['style_ids']
-                    # 先刪除舊的關聯
-                    cursor.execute("DELETE FROM teacher_styles WHERE teacher_id = %s", (teacher_id,))
-                    # 新增新的關聯
+                    # ?�刪?��??��???                    cursor.execute("DELETE FROM teacher_styles WHERE teacher_id = %s", (teacher_id,))
+                    # ?��??��??�聯
                     if style_ids:
                         insert_style_query = """
                         INSERT INTO teacher_styles (teacher_id, style_id)
@@ -1033,26 +1023,26 @@ class Teacher(Resource):
                 
                 return {
                     'success': True,
-                    'message': '老師資料更新成功！'
+                    'message': '?�師資�??�新?��?�?
                 }, 200
                 
             except mysql.connector.Error as err:
-                print(f"更新老師錯誤: {err}")
-                return {'error': '更新老師失敗'}, 500
+                print(f"?�新?�師?�誤: {err}")
+                return {'error': '?�新?�師失�?'}, 500
             finally:
                 cursor.close()
                 connection.close()
                 
         except Exception as e:
-            print(f"更新老師錯誤: {str(e)}")
-            return {'error': '更新老師失敗'}, 500
+            print(f"?�新?�師?�誤: {str(e)}")
+            return {'error': '?�新?�師失�?'}, 500
 
     def delete(self, teacher_id):
-        """刪除老師"""
+        """?�除?�師"""
         try:
             connection = get_db_connection()
             if not connection:
-                return {'error': '資料庫連接失敗'}, 500
+                return {'error': '資�?庫�?��失�?'}, 500
             
             try:
                 cursor = connection.cursor()
@@ -1060,31 +1050,31 @@ class Teacher(Resource):
                 connection.commit()
                 
                 if cursor.rowcount == 0:
-                    return {'error': '老師未找到'}, 404
+                    return {'error': '?�師?�找??}, 404
                 
                 return {
                     'success': True,
-                    'message': '老師刪除成功！'
+                    'message': '?�師?�除?��?�?
                 }, 200
                 
             except mysql.connector.Error as err:
-                print(f"刪除老師錯誤: {err}")
-                return {'error': '刪除老師失敗'}, 500
+                print(f"?�除?�師?�誤: {err}")
+                return {'error': '?�除?�師失�?'}, 500
             finally:
                 cursor.close()
                 connection.close()
                 
         except Exception as e:
-            print(f"刪除老師錯誤: {str(e)}")
-            return {'error': '刪除老師失敗'}, 500
+            print(f"?�除?�師?�誤: {str(e)}")
+            return {'error': '?�除?�師失�?'}, 500
 
 class Course(Resource):
     def get(self, course_id):
-        """取得單一課程"""
+        """?��??��?課�?"""
         try:
             connection = get_db_connection()
             if not connection:
-                return {'error': '資料庫連接失敗'}, 500
+                return {'error': '資�?庫�?��失�?'}, 500
             
             try:
                 cursor = connection.cursor(dictionary=True)
@@ -1099,9 +1089,9 @@ class Course(Resource):
                 course = cursor.fetchone()
                 
                 if not course:
-                    return {'error': '課程未找到'}, 404
+                    return {'error': '課�??�找??}, 404
                 
-                # 轉換 Decimal 和 datetime 物件為可 JSON 序列化的格式
+                # 轉�? Decimal ??datetime ?�件?�可 JSON 序�??��??��?
                 if 'price' in course and course['price'] is not None:
                     course['price'] = str(course['price'])
                 for field in ['created_at', 'updated_at']:
@@ -1114,27 +1104,27 @@ class Course(Resource):
                 }, 200
                 
             except mysql.connector.Error as err:
-                print(f"查詢課程錯誤: {err}")
-                return {'error': '查詢課程失敗'}, 500
+                print(f"?�詢課�??�誤: {err}")
+                return {'error': '?�詢課�?失�?'}, 500
             finally:
                 cursor.close()
                 connection.close()
                 
         except Exception as e:
-            print(f"查詢課程錯誤: {str(e)}")
-            return {'error': '查詢課程失敗'}, 500
+            print(f"?�詢課�??�誤: {str(e)}")
+            return {'error': '?�詢課�?失�?'}, 500
 
     def put(self, course_id):
-        """更新課程資料"""
+        """?�新課�?資�?"""
         try:
             data = request.get_json()
             
             if not data:
-                return {'error': '缺少更新資料'}, 400
+                return {'error': '缺�??�新資�?'}, 400
             
             connection = get_db_connection()
             if not connection:
-                return {'error': '資料庫連接失敗'}, 500
+                return {'error': '資�?庫�?��失�?'}, 500
             
             try:
                 cursor = connection.cursor()
@@ -1143,12 +1133,12 @@ class Course(Resource):
                 values = []
                 
                 for key, value in data.items():
-                    if key in ['name', 'description', 'level', 'style_id', 'duration_minutes', 'max_students', 'price', 'teacher_id']:
+                    if key in ['name', 'description', 'level', 'style_id', 'duration_minutes', 'max_students', 'price', 'classes_required', 'teacher_id']:
                         update_fields.append(f"{key} = %s")
                         values.append(value)
                 
                 if not update_fields:
-                    return {'error': '沒有可更新的欄位'}, 400
+                    return {'error': '沒�??�更?��?欄�?'}, 400
                 
                 update_query = f"UPDATE courses SET {', '.join(update_fields)} WHERE id = %s"
                 values.append(course_id)
@@ -1157,30 +1147,30 @@ class Course(Resource):
                 connection.commit()
                 
                 if cursor.rowcount == 0:
-                    return {'error': '課程未找到或資料未改變'}, 404
+                    return {'error': '課�??�找?��?資�??�改�?}, 404
                 
                 return {
                     'success': True,
-                    'message': '課程資料更新成功！'
+                    'message': '課�?資�??�新?��?�?
                 }, 200
                 
             except mysql.connector.Error as err:
-                print(f"更新課程錯誤: {err}")
-                return {'error': '更新課程失敗'}, 500
+                print(f"?�新課�??�誤: {err}")
+                return {'error': '?�新課�?失�?'}, 500
             finally:
                 cursor.close()
                 connection.close()
                 
         except Exception as e:
-            print(f"更新課程錯誤: {str(e)}")
-            return {'error': '更新課程失敗'}, 500
+            print(f"?�新課�??�誤: {str(e)}")
+            return {'error': '?�新課�?失�?'}, 500
 
     def delete(self, course_id):
-        """刪除課程"""
+        """?�除課�?"""
         try:
             connection = get_db_connection()
             if not connection:
-                return {'error': '資料庫連接失敗'}, 500
+                return {'error': '資�?庫�?��失�?'}, 500
             
             try:
                 cursor = connection.cursor()
@@ -1188,31 +1178,31 @@ class Course(Resource):
                 connection.commit()
                 
                 if cursor.rowcount == 0:
-                    return {'error': '課程未找到'}, 404
+                    return {'error': '課�??�找??}, 404
                 
                 return {
                     'success': True,
-                    'message': '課程刪除成功！'
+                    'message': '課�??�除?��?�?
                 }, 200
                 
             except mysql.connector.Error as err:
-                print(f"刪除課程錯誤: {err}")
-                return {'error': '刪除課程失敗'}, 500
+                print(f"?�除課�??�誤: {err}")
+                return {'error': '?�除課�?失�?'}, 500
             finally:
                 cursor.close()
                 connection.close()
                 
         except Exception as e:
-            print(f"刪除課程錯誤: {str(e)}")
-            return {'error': '刪除課程失敗'}, 500
+            print(f"?�除課�??�誤: {str(e)}")
+            return {'error': '?�除課�?失�?'}, 500
 
 class Course(Resource):
     def get(self, course_id):
-        """取得單一課程"""
+        """?��??��?課�?"""
         try:
             connection = get_db_connection()
             if not connection:
-                return {'error': '資料庫連接失敗'}, 500
+                return {'error': '資�?庫�?��失�?'}, 500
             
             try:
                 cursor = connection.cursor(dictionary=True)
@@ -1227,9 +1217,9 @@ class Course(Resource):
                 course = cursor.fetchone()
                 
                 if not course:
-                    return {'error': '課程未找到'}, 404
+                    return {'error': '課�??�找??}, 404
                 
-                # 轉換 Decimal 和 datetime 物件為可 JSON 序列化的格式
+                # 轉�? Decimal ??datetime ?�件?�可 JSON 序�??��??��?
                 if 'price' in course and course['price'] is not None:
                     course['price'] = str(course['price'])
                 for field in ['created_at', 'updated_at']:
@@ -1242,27 +1232,27 @@ class Course(Resource):
                 }, 200
                 
             except mysql.connector.Error as err:
-                print(f"查詢課程錯誤: {err}")
-                return {'error': '查詢課程失敗'}, 500
+                print(f"?�詢課�??�誤: {err}")
+                return {'error': '?�詢課�?失�?'}, 500
             finally:
                 cursor.close()
                 connection.close()
                 
         except Exception as e:
-            print(f"查詢課程錯誤: {str(e)}")
-            return {'error': '查詢課程失敗'}, 500
+            print(f"?�詢課�??�誤: {str(e)}")
+            return {'error': '?�詢課�?失�?'}, 500
 
     def put(self, course_id):
-        """更新課程資料"""
+        """?�新課�?資�?"""
         try:
             data = request.get_json()
             
             if not data:
-                return {'error': '缺少更新資料'}, 400
+                return {'error': '缺�??�新資�?'}, 400
             
             connection = get_db_connection()
             if not connection:
-                return {'error': '資料庫連接失敗'}, 500
+                return {'error': '資�?庫�?��失�?'}, 500
             
             try:
                 cursor = connection.cursor()
@@ -1271,12 +1261,12 @@ class Course(Resource):
                 values = []
                 
                 for key, value in data.items():
-                    if key in ['name', 'description', 'level', 'style_id', 'duration_minutes', 'max_students', 'price', 'teacher_id']:
+                    if key in ['name', 'description', 'level', 'style_id', 'duration_minutes', 'max_students', 'price', 'classes_required', 'teacher_id']:
                         update_fields.append(f"{key} = %s")
                         values.append(value)
                 
                 if not update_fields:
-                    return {'error': '沒有可更新的欄位'}, 400
+                    return {'error': '沒�??�更?��?欄�?'}, 400
                 
                 update_query = f"UPDATE courses SET {', '.join(update_fields)} WHERE id = %s"
                 values.append(course_id)
@@ -1285,30 +1275,30 @@ class Course(Resource):
                 connection.commit()
                 
                 if cursor.rowcount == 0:
-                    return {'error': '課程未找到或資料未改變'}, 404
+                    return {'error': '課�??�找?��?資�??�改�?}, 404
                 
                 return {
                     'success': True,
-                    'message': '課程資料更新成功！'
+                    'message': '課�?資�??�新?��?�?
                 }, 200
                 
             except mysql.connector.Error as err:
-                print(f"更新課程錯誤: {err}")
-                return {'error': '更新課程失敗'}, 500
+                print(f"?�新課�??�誤: {err}")
+                return {'error': '?�新課�?失�?'}, 500
             finally:
                 cursor.close()
                 connection.close()
                 
         except Exception as e:
-            print(f"更新課程錯誤: {str(e)}")
-            return {'error': '更新課程失敗'}, 500
+            print(f"?�新課�??�誤: {str(e)}")
+            return {'error': '?�新課�?失�?'}, 500
 
     def delete(self, course_id):
-        """刪除課程"""
+        """?�除課�?"""
         try:
             connection = get_db_connection()
             if not connection:
-                return {'error': '資料庫連接失敗'}, 500
+                return {'error': '資�?庫�?��失�?'}, 500
             
             try:
                 cursor = connection.cursor()
@@ -1316,28 +1306,28 @@ class Course(Resource):
                 connection.commit()
                 
                 if cursor.rowcount == 0:
-                    return {'error': '課程未找到'}, 404
+                    return {'error': '課�??�找??}, 404
                 
                 return {
                     'success': True,
-                    'message': '課程刪除成功！'
+                    'message': '課�??�除?��?�?
                 }, 200
                 
             except mysql.connector.Error as err:
-                print(f"刪除課程錯誤: {err}")
-                return {'error': '刪除課程失敗'}, 500
+                print(f"?�除課�??�誤: {err}")
+                return {'error': '?�除課�?失�?'}, 500
             finally:
                 cursor.close()
                 connection.close()
                 
         except Exception as e:
-            print(f"刪除課程錯誤: {str(e)}")
-            return {'error': '刪除課程失敗'}, 500
+            print(f"?�除課�??�誤: {str(e)}")
+            return {'error': '?�除課�?失�?'}, 500
 
 api.add_resource(HelloWorld, '/')
 api.add_resource(Enrollment, '/api/enrollment')
 api.add_resource(Students, '/api/students')
-api.add_resource(Student, '/api/students/<int:student_id>') # 新增的學生單一資源
+api.add_resource(Student, '/api/students/<int:student_id>') # ?��??�學?�單一資�?
 api.add_resource(Teachers, '/api/teachers')
 api.add_resource(Teacher, '/api/teachers/<int:teacher_id>')
 api.add_resource(Courses, '/api/courses')
@@ -1346,11 +1336,11 @@ api.add_resource(CourseSchedules, '/api/schedules')
 
 class CourseSchedule(Resource):
     def get(self, schedule_id):
-        """取得單一課程時間表"""
+        """?��??��?課�??��?�?""
         try:
             connection = get_db_connection()
             if not connection:
-                return {'error': '資料庫連接失敗'}, 500
+                return {'error': '資�?庫�?��失�?'}, 500
             
             try:
                 cursor = connection.cursor(dictionary=True)
@@ -1369,10 +1359,9 @@ class CourseSchedule(Resource):
                 schedule = cursor.fetchone()
                 
                 if not schedule:
-                    return {'error': '課程時間表未找到'}, 404
+                    return {'error': '課�??��?表未?�到'}, 404
                 
-                # 轉換時間物件為字串
-                if schedule.get('schedule_date'):
+                # 轉�??��??�件?��?�?                if schedule.get('schedule_date'):
                     schedule['schedule_date'] = str(schedule['schedule_date'])
                 if schedule.get('start_time'):
                     schedule['start_time'] = str(schedule['start_time'])
@@ -1387,27 +1376,27 @@ class CourseSchedule(Resource):
                 }, 200
                 
             except mysql.connector.Error as err:
-                print(f"查詢課程時間表錯誤: {err}")
-                return {'error': '查詢課程時間表失敗'}, 500
+                print(f"?�詢課�??��?表錯�? {err}")
+                return {'error': '?�詢課�??��?表失??}, 500
             finally:
                 cursor.close()
                 connection.close()
                 
         except Exception as e:
-            print(f"查詢課程時間表錯誤: {str(e)}")
-            return {'error': '查詢課程時間表失敗'}, 500
+            print(f"?�詢課�??��?表錯�? {str(e)}")
+            return {'error': '?�詢課�??��?表失??}, 500
 
     def put(self, schedule_id):
-        """更新課程時間表資料"""
+        """?�新課�??��?表�???""
         try:
             data = request.get_json()
             
             if not data:
-                return {'error': '缺少更新資料'}, 400
+                return {'error': '缺�??�新資�?'}, 400
             
             connection = get_db_connection()
             if not connection:
-                return {'error': '資料庫連接失敗'}, 500
+                return {'error': '資�?庫�?��失�?'}, 500
             
             try:
                 cursor = connection.cursor()
@@ -1421,9 +1410,9 @@ class CourseSchedule(Resource):
                         values.append(value)
                 
                 if not update_fields:
-                    return {'error': '沒有可更新的欄位'}, 400
+                    return {'error': '沒�??�更?��?欄�?'}, 400
                 
-                # 從日期推算星期幾
+                # 從日?�推算�??�幾
                 if 'schedule_date' in data:
                     from datetime import datetime
                     date_obj = datetime.strptime(data['schedule_date'], '%Y-%m-%d')
@@ -1438,33 +1427,33 @@ class CourseSchedule(Resource):
                 connection.commit()
                 
                 if cursor.rowcount == 0:
-                    return {'error': '課程時間表未找到或資料未改變'}, 404
+                    return {'error': '課�??��?表未?�到?��??�未?��?'}, 404
                 
                 return {
                     'success': True,
-                    'message': '課程時間表資料更新成功！'
+                    'message': '課�??��?表�??�更?��??��?'
                 }, 200
                 
             except mysql.connector.Error as err:
-                print(f"更新課程時間表錯誤: {err}")
-                return {'error': '更新課程時間表失敗'}, 500
+                print(f"?�新課�??��?表錯�? {err}")
+                return {'error': '?�新課�??��?表失??}, 500
             except ValueError as e:
-                print(f"日期格式錯誤: {e}")
-                return {'error': '日期格式錯誤，請使用 YYYY-MM-DD 格式'}, 400
+                print(f"?��??��??�誤: {e}")
+                return {'error': '?��??��??�誤，�?使用 YYYY-MM-DD ?��?'}, 400
             finally:
                 cursor.close()
                 connection.close()
                 
         except Exception as e:
-            print(f"更新課程時間表錯誤: {str(e)}")
-            return {'error': '更新課程時間表失敗'}, 500
+            print(f"?�新課�??��?表錯�? {str(e)}")
+            return {'error': '?�新課�??��?表失??}, 500
 
     def delete(self, schedule_id):
-        """刪除課程時間表"""
+        """?�除課�??��?�?""
         try:
             connection = get_db_connection()
             if not connection:
-                return {'error': '資料庫連接失敗'}, 500
+                return {'error': '資�?庫�?��失�?'}, 500
             
             try:
                 cursor = connection.cursor()
@@ -1472,33 +1461,33 @@ class CourseSchedule(Resource):
                 connection.commit()
                 
                 if cursor.rowcount == 0:
-                    return {'error': '課程時間表未找到'}, 404
+                    return {'error': '課�??��?表未?�到'}, 404
                 
                 return {
                     'success': True,
-                    'message': '課程時間表刪除成功！'
+                    'message': '課�??��?表刪?��??��?'
                 }, 200
                 
             except mysql.connector.Error as err:
-                print(f"刪除課程時間表錯誤: {err}")
-                return {'error': '刪除課程時間表失敗'}, 500
+                print(f"?�除課�??��?表錯�? {err}")
+                return {'error': '?�除課�??��?表失??}, 500
             finally:
                 cursor.close()
                 connection.close()
                 
         except Exception as e:
-            print(f"刪除課程時間表錯誤: {str(e)}")
-            return {'error': '刪除課程時間表失敗'}, 500
+            print(f"?�除課�??��?表錯�? {str(e)}")
+            return {'error': '?�除課�??��?表失??}, 500
 
 api.add_resource(CourseSchedule, '/api/schedules/<int:schedule_id>')
 
 class Styles(Resource):
     def get(self):
-        """取得所有風格"""
+        """?��??�?�風??""
         try:
             connection = get_db_connection()
             if not connection:
-                return {'error': '資料庫連接失敗'}, 500
+                return {'error': '資�?庫�?��失�?'}, 500
             
             try:
                 cursor = connection.cursor(dictionary=True)
@@ -1512,27 +1501,27 @@ class Styles(Resource):
                 }, 200
                 
             except mysql.connector.Error as err:
-                print(f"查詢風格錯誤: {err}")
-                return {'error': '查詢風格失敗'}, 500
+                print(f"?�詢風格?�誤: {err}")
+                return {'error': '?�詢風格失�?'}, 500
             finally:
                 cursor.close()
                 connection.close()
                 
         except Exception as e:
-            print(f"查詢風格錯誤: {str(e)}")
-            return {'error': '查詢風格失敗'}, 500
+            print(f"?�詢風格?�誤: {str(e)}")
+            return {'error': '?�詢風格失�?'}, 500
     
     def post(self):
-        """新增風格"""
+        """?��?風格"""
         try:
             data = request.get_json()
             
             if not data or 'name' not in data:
-                return {'error': '缺少必要欄位：風格名稱'}, 400
+                return {'error': '缺�?必�?欄�?：風?��?�?}, 400
             
             connection = get_db_connection()
             if not connection:
-                return {'error': '資料庫連接失敗'}, 500
+                return {'error': '資�?庫�?��失�?'}, 500
             
             try:
                 cursor = connection.cursor()
@@ -1554,30 +1543,30 @@ class Styles(Resource):
                 
                 return {
                     'success': True,
-                    'message': '風格新增成功！',
+                    'message': '風格?��??��?�?,
                     'style_id': style_id
                 }, 201
                 
             except mysql.connector.Error as err:
-                print(f"新增風格錯誤: {err}")
-                return {'error': '新增風格失敗'}, 500
+                print(f"?��?風格?�誤: {err}")
+                return {'error': '?��?風格失�?'}, 500
             finally:
                 cursor.close()
                 connection.close()
                 
         except Exception as e:
-            print(f"新增風格錯誤: {str(e)}")
-            return {'error': '新增風格失敗'}, 500
+            print(f"?��?風格?�誤: {str(e)}")
+            return {'error': '?��?風格失�?'}, 500
 
 api.add_resource(Styles, '/api/styles')
 
 class Style(Resource):
     def get(self, style_id):
-        """取得單一風格"""
+        """?��??��?風格"""
         try:
             connection = get_db_connection()
             if not connection:
-                return {'error': '資料庫連接失敗'}, 500
+                return {'error': '資�?庫�?��失�?'}, 500
             
             try:
                 cursor = connection.cursor(dictionary=True)
@@ -1585,7 +1574,7 @@ class Style(Resource):
                 style = cursor.fetchone()
                 
                 if not style:
-                    return {'error': '風格未找到'}, 404
+                    return {'error': '風格?�找??}, 404
                 
                 return {
                     'success': True,
@@ -1593,27 +1582,27 @@ class Style(Resource):
                 }, 200
                 
             except mysql.connector.Error as err:
-                print(f"查詢風格錯誤: {err}")
-                return {'error': '查詢風格失敗'}, 500
+                print(f"?�詢風格?�誤: {err}")
+                return {'error': '?�詢風格失�?'}, 500
             finally:
                 cursor.close()
                 connection.close()
                 
         except Exception as e:
-            print(f"查詢風格錯誤: {str(e)}")
-            return {'error': '查詢風格失敗'}, 500
+            print(f"?�詢風格?�誤: {str(e)}")
+            return {'error': '?�詢風格失�?'}, 500
 
     def put(self, style_id):
-        """更新風格資料"""
+        """?�新風格資�?"""
         try:
             data = request.get_json()
             
             if not data:
-                return {'error': '缺少更新資料'}, 400
+                return {'error': '缺�??�新資�?'}, 400
             
             connection = get_db_connection()
             if not connection:
-                return {'error': '資料庫連接失敗'}, 500
+                return {'error': '資�?庫�?��失�?'}, 500
             
             try:
                 cursor = connection.cursor()
@@ -1627,7 +1616,7 @@ class Style(Resource):
                         values.append(value)
                 
                 if not update_fields:
-                    return {'error': '沒有可更新的欄位'}, 400
+                    return {'error': '沒�??�更?��?欄�?'}, 400
                 
                 update_query = f"UPDATE styles SET {', '.join(update_fields)} WHERE id = %s"
                 values.append(style_id)
@@ -1636,30 +1625,30 @@ class Style(Resource):
                 connection.commit()
                 
                 if cursor.rowcount == 0:
-                    return {'error': '風格未找到或資料未改變'}, 404
+                    return {'error': '風格?�找?��?資�??�改�?}, 404
                 
                 return {
                     'success': True,
-                    'message': '風格資料更新成功！'
+                    'message': '風格資�??�新?��?�?
                 }, 200
                 
             except mysql.connector.Error as err:
-                print(f"更新風格錯誤: {err}")
-                return {'error': '更新風格失敗'}, 500
+                print(f"?�新風格?�誤: {err}")
+                return {'error': '?�新風格失�?'}, 500
             finally:
                 cursor.close()
                 connection.close()
                 
         except Exception as e:
-            print(f"更新風格錯誤: {str(e)}")
-            return {'error': '更新風格失敗'}, 500
+            print(f"?�新風格?�誤: {str(e)}")
+            return {'error': '?�新風格失�?'}, 500
 
     def delete(self, style_id):
-        """刪除風格"""
+        """?�除風格"""
         try:
             connection = get_db_connection()
             if not connection:
-                return {'error': '資料庫連接失敗'}, 500
+                return {'error': '資�?庫�?��失�?'}, 500
             
             try:
                 cursor = connection.cursor()
@@ -1667,44 +1656,43 @@ class Style(Resource):
                 connection.commit()
                 
                 if cursor.rowcount == 0:
-                    return {'error': '風格未找到'}, 404
+                    return {'error': '風格?�找??}, 404
                 
                 return {
                     'success': True,
-                    'message': '風格刪除成功！'
+                    'message': '風格?�除?��?�?
                 }, 200
                 
             except mysql.connector.Error as err:
-                print(f"刪除風格錯誤: {err}")
-                return {'error': '刪除風格失敗'}, 500
+                print(f"?�除風格?�誤: {err}")
+                return {'error': '?�除風格失�?'}, 500
             finally:
                 cursor.close()
                 connection.close()
                 
         except Exception as e:
-            print(f"刪除風格錯誤: {str(e)}")
-            return {'error': '刪除風格失敗'}, 500
+            print(f"?�除風格?�誤: {str(e)}")
+            return {'error': '?�除風格失�?'}, 500
 
 api.add_resource(Style, '/api/styles/<int:style_id>')
 
 class Rooms(Resource):
     def get(self):
-        """取得所有教室"""
+        """?��??�?��?�?""
         try:
             connection = get_db_connection()
             if not connection:
-                return {'error': '查詢教室失敗'}, 500
+                return {'error': '?�詢?�室失�?'}, 500
             
             try:
                 cursor = connection.cursor(dictionary=True)
                 cursor.execute("SELECT * FROM rooms ORDER BY id DESC")
                 rooms = cursor.fetchall()
 
-                # 轉換 Decimal 物件為字串
-                for room in rooms:
+                # 轉�? Decimal ?�件?��?�?                for room in rooms:
                     if room.get('hourly_rate'):
                         room['hourly_rate'] = str(room['hourly_rate'])
-                    # 轉換 datetime 物件為 ISO 格式字串
+                    # 轉�? datetime ?�件??ISO ?��?字串
                     for field in ['created_at', 'updated_at']:
                         if room.get(field) and isinstance(room[field], datetime):
                             room[field] = room[field].isoformat()
@@ -1716,27 +1704,27 @@ class Rooms(Resource):
                 }, 200
                 
             except mysql.connector.Error as err:
-                print(f"查詢教室錯誤: {err}")
-                return {'error': '查詢教室失敗'}, 500
+                print(f"?�詢?�室?�誤: {err}")
+                return {'error': '?�詢?�室失�?'}, 500
             finally:
                 cursor.close()
                 connection.close()
                 
         except Exception as e:
-            print(f"查詢教室錯誤: {str(e)}")
-            return {'error': '查詢教室失敗'}, 500
+            print(f"?�詢?�室?�誤: {str(e)}")
+            return {'error': '?�詢?�室失�?'}, 500
 
     def post(self):
-        """新增教室"""
+        """?��??�室"""
         try:
             data = request.get_json()
             
             if not data or 'name' not in data:
-                return {'error': '缺少必要欄位：教室名稱'}, 400
+                return {'error': '缺�?必�?欄�?：�?室�?�?}, 400
             
             connection = get_db_connection()
             if not connection:
-                return {'error': '資料庫連接失敗'}, 500
+                return {'error': '資�?庫�?��失�?'}, 500
             
             try:
                 cursor = connection.cursor()
@@ -1762,30 +1750,30 @@ class Rooms(Resource):
                 
                 return {
                     'success': True,
-                    'message': '教室新增成功！',
+                    'message': '?�室?��??��?�?,
                     'room_id': room_id
                 }, 201
                 
             except mysql.connector.Error as err:
-                print(f"新增教室錯誤: {err}")
-                return {'error': '新增教室失敗'}, 500
+                print(f"?��??�室?�誤: {err}")
+                return {'error': '?��??�室失�?'}, 500
             finally:
                 cursor.close()
                 connection.close()
                 
         except Exception as e:
-            print(f"新增教室錯誤: {str(e)}")
-            return {'error': '新增教室失敗'}, 500
+            print(f"?��??�室?�誤: {str(e)}")
+            return {'error': '?��??�室失�?'}, 500
 
 api.add_resource(Rooms, '/api/rooms')
 
 class Room(Resource):
     def get(self, room_id):
-        """取得單一教室"""
+        """?��??��??�室"""
         try:
             connection = get_db_connection()
             if not connection:
-                return {'error': '資料庫連接失敗'}, 500
+                return {'error': '資�?庫�?��失�?'}, 500
             
             try:
                 cursor = connection.cursor(dictionary=True)
@@ -1793,9 +1781,9 @@ class Room(Resource):
                 room = cursor.fetchone()
                 
                 if not room:
-                    return {'error': '教室未找到'}, 404
+                    return {'error': '?�室?�找??}, 404
                 
-                # 轉換 Decimal 與 datetime
+                # 轉�? Decimal ??datetime
                 if room.get('hourly_rate') is not None:
                     room['hourly_rate'] = str(room['hourly_rate'])
                 for field in ['created_at', 'updated_at']:
@@ -1808,27 +1796,27 @@ class Room(Resource):
                 }, 200
                 
             except mysql.connector.Error as err:
-                print(f"查詢教室錯誤: {err}")
-                return {'error': '查詢教室失敗'}, 500
+                print(f"?�詢?�室?�誤: {err}")
+                return {'error': '?�詢?�室失�?'}, 500
             finally:
                 cursor.close()
                 connection.close()
                 
         except Exception as e:
-            print(f"查詢教室錯誤: {str(e)}")
-            return {'error': '查詢教室失敗'}, 500
+            print(f"?�詢?�室?�誤: {str(e)}")
+            return {'error': '?�詢?�室失�?'}, 500
 
     def put(self, room_id):
-        """更新教室資料"""
+        """?�新?�室資�?"""
         try:
             data = request.get_json()
             
             if not data:
-                return {'error': '缺少更新資料'}, 400
+                return {'error': '缺�??�新資�?'}, 400
             
             connection = get_db_connection()
             if not connection:
-                return {'error': '資料庫連接失敗'}, 500
+                return {'error': '資�?庫�?��失�?'}, 500
             
             try:
                 cursor = connection.cursor()
@@ -1842,7 +1830,7 @@ class Room(Resource):
                         values.append(value)
                 
                 if not update_fields:
-                    return {'error': '沒有可更新的欄位'}, 400
+                    return {'error': '沒�??�更?��?欄�?'}, 400
                 
                 update_query = f"UPDATE rooms SET {', '.join(update_fields)} WHERE id = %s"
                 values.append(room_id)
@@ -1851,30 +1839,30 @@ class Room(Resource):
                 connection.commit()
                 
                 if cursor.rowcount == 0:
-                    return {'error': '教室未找到或資料未改變'}, 404
+                    return {'error': '?�室?�找?��?資�??�改�?}, 404
                 
                 return {
                     'success': True,
-                    'message': '教室資料更新成功！'
+                    'message': '?�室資�??�新?��?�?
                 }, 200
                 
             except mysql.connector.Error as err:
-                print(f"更新教室錯誤: {err}")
-                return {'error': '更新教室失敗'}, 500
+                print(f"?�新?�室?�誤: {err}")
+                return {'error': '?�新?�室失�?'}, 500
             finally:
                 cursor.close()
                 connection.close()
                 
         except Exception as e:
-            print(f"更新教室錯誤: {str(e)}")
-            return {'error': '更新教室失敗'}, 500
+            print(f"?�新?�室?�誤: {str(e)}")
+            return {'error': '?�新?�室失�?'}, 500
 
     def delete(self, room_id):
-        """刪除教室"""
+        """?�除?�室"""
         try:
             connection = get_db_connection()
             if not connection:
-                return {'error': '資料庫連接失敗'}, 500
+                return {'error': '資�?庫�?��失�?'}, 500
             
             try:
                 cursor = connection.cursor()
@@ -1882,29 +1870,29 @@ class Room(Resource):
                 connection.commit()
                 
                 if cursor.rowcount == 0:
-                    return {'error': '教室未找到'}, 404
+                    return {'error': '?�室?�找??}, 404
                 
                 return {
                     'success': True,
-                    'message': '教室刪除成功！'
+                    'message': '?�室?�除?��?�?
                 }, 200
                 
             except mysql.connector.Error as err:
-                print(f"刪除教室錯誤: {err}")
-                return {'error': '刪除教室失敗'}, 500
+                print(f"?�除?�室?�誤: {err}")
+                return {'error': '?�除?�室失�?'}, 500
             finally:
                 cursor.close()
                 connection.close()
                 
         except Exception as e:
-            print(f"刪除教室錯誤: {str(e)}")
-            return {'error': '刪除教室失敗'}, 500
+            print(f"?�除?�室?�誤: {str(e)}")
+            return {'error': '?�除?�室失�?'}, 500
 
 api.add_resource(Room, '/api/rooms/<int:room_id>')
 
 
 
 if __name__ == '__main__':
-    # 初始化資料庫表格
+    # ?��??��??�庫表格
     init_database_tables()
     app.run(debug=True, host='0.0.0.0', port=8001)

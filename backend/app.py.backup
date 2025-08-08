@@ -124,6 +124,7 @@ def init_database_tables():
                 duration_minutes INT DEFAULT 60,
                 max_students INT DEFAULT 15,
                 price DECIMAL(10,2),
+                required_classes INT DEFAULT 1 COMMENT '需要扣除的堂數',
                 teacher_id INT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -645,8 +646,8 @@ class Courses(Resource):
                 
                 insert_query = """
                 INSERT INTO courses 
-                (name, description, level, style_id, duration_minutes, max_students, price, teacher_id)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                (name, description, level, style_id, duration_minutes, max_students, price, required_classes, teacher_id)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """
                 
                 values = (
@@ -657,6 +658,7 @@ class Courses(Resource):
                     data.get('duration_minutes', 60),
                     data.get('max_students', 15),
                     data.get('price'),
+                    data.get('required_classes', 1),
                     data.get('teacher_id')
                 )
                 
